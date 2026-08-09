@@ -249,14 +249,7 @@ export class SynthCicadaVoice implements CicadaVoice {
     const AudioContextClass = audioWindow?.AudioContext ?? audioWindow?.webkitAudioContext;
     if (!AudioContextClass) return;
     if (!this.context) {
-      const context = new AudioContextClass();
-      this.context = context;
-      // Claim transient user activation before slow buffer generation and graph setup.
-      const resumed = context.state !== 'running' && context.state !== 'closed'
-        ? context.resume().catch(() => undefined)
-        : Promise.resolve();
-      this.start(context);
-      await resumed;
+      await this.start(AudioContextClass);
       return;
     }
     if (this.context && this.context.state !== 'running' && this.context.state !== 'closed') {
@@ -339,7 +332,13 @@ export class SynthCicadaVoice implements CicadaVoice {
     this.modeFilters = [];
   }
 
-  private start(context: AudioContext): void {
+  private start(AudioContextClass: typeof AudioContext): Promise<void> {
+    const context = new AudioContextClass();
+    let resumed = Promise.resolve();
+    let resumeThrew = false;
+    if (context.state !== 'running' && context.state !== 'closed') {
+      try { resumed = Promise.resolve(context.resume()).catch(() => undefined); } catch { resumeThrew = true; }
+    }
     const pulse = context.createBufferSource();
     const noise = context.createBufferSource();
     const pulseGain = context.createGain();
@@ -453,5 +452,9 @@ export class SynthCicadaVoice implements CicadaVoice {
     this.oneWayDelay = oneWayDelay;
     this.roundTripDelay = roundTripDelay;
     this.modeFilters = modeFilters;
+    if (resumeThrew && context.state !== 'running' && context.state !== 'closed') {
+      try { resumed = Promise.resolve(context.resume()).catch(() => undefined); } catch { /* retry on the next gesture */ }
+    }
+    return resumed;
   }
 }

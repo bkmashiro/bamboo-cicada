@@ -131,13 +131,7 @@ export class SampledCicadaVoice implements CicadaVoice {
     const AudioContextClass = audioWindow?.AudioContext ?? audioWindow?.webkitAudioContext;
     if (!AudioContextClass) return;
     if (!this.context) {
-      const context = new AudioContextClass();
-      this.context = context;
-      const resumed = context.state !== 'running' && context.state !== 'closed'
-        ? context.resume().catch(() => undefined)
-        : Promise.resolve();
-      this.start(context);
-      await resumed;
+      await this.start(AudioContextClass);
     } else if (this.context.state !== 'running' && this.context.state !== 'closed') {
       await this.context.resume().catch(() => undefined);
     }
@@ -175,7 +169,13 @@ export class SampledCicadaVoice implements CicadaVoice {
     this.pending = undefined;
   }
 
-  private start(context: AudioContext): void {
+  private start(AudioContextClass: typeof AudioContext): Promise<void> {
+    const context = new AudioContextClass();
+    let resumed = Promise.resolve();
+    let resumeThrew = false;
+    if (context.state !== 'running' && context.state !== 'closed') {
+      try { resumed = Promise.resolve(context.resume()).catch(() => undefined); } catch { resumeThrew = true; }
+    }
     const filter = context.createBiquadFilter();
     const output = context.createGain();
     const limiter = context.createWaveShaper();
@@ -189,6 +189,10 @@ export class SampledCicadaVoice implements CicadaVoice {
     this.context = context;
     this.filter = filter;
     this.output = output;
+    if (resumeThrew && context.state !== 'running' && context.state !== 'closed') {
+      try { resumed = Promise.resolve(context.resume()).catch(() => undefined); } catch { /* retry on the next gesture */ }
+    }
+    return resumed;
   }
 
   private async decodeAndStart(data: ArrayBuffer, generation: number): Promise<void> {
