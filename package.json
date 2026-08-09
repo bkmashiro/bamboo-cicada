@@ -1,9 +1,10 @@
 {
   "name": "bamboo-cicada",
   "version": "0.1.0",
-  "description": "A tiny, embeddable bamboo cicada toy for any web page.",
+  "description": "A physics-driven bamboo cicada that floats over any web page.",
   "type": "module",
   "license": "MIT",
+  "sideEffects": true,
   "files": [
     "dist",
     "README.md",

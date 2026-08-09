@@ -2,21 +2,38 @@ import { BambooCicadaElement, type BambooCicadaOptions } from './bamboo-cicada';
 
 export { BambooCicadaElement };
 export type { BambooCicadaOptions };
-export { angularVelocity, damp, soundLevel } from './physics';
+export { DefaultCicadaRenderer } from './renderer';
+export { SynthCicadaVoice, mapVoiceParameters } from './audio';
+export type { CicadaVoice, VoiceParameters } from './audio';
+export { createPhysics, stepPhysics, defaultPhysicsOptions } from './physics';
+export type { BodyPoint, PhysicsOptions, PhysicsState, Point, RopeState } from './physics';
+export type {
+  CicadaParts,
+  CicadaRenderer,
+  MotionState,
+  PartSource,
+  RendererMountContext,
+} from './types';
 
 export function defineBambooCicada(): void {
-  if (!customElements.get('bamboo-cicada')) {
+  if (typeof customElements !== 'undefined' && !customElements.get('bamboo-cicada')) {
     customElements.define('bamboo-cicada', BambooCicadaElement);
   }
 }
 
+export function mountBambooCicada(): BambooCicadaElement;
+export function mountBambooCicada(options: BambooCicadaOptions): BambooCicadaElement;
+export function mountBambooCicada(host: Element, options?: BambooCicadaOptions): BambooCicadaElement;
 export function mountBambooCicada(
-  host: Element,
-  options: BambooCicadaOptions = {},
+  hostOrOptions?: Element | BambooCicadaOptions,
+  maybeOptions: BambooCicadaOptions = {},
 ): BambooCicadaElement {
   defineBambooCicada();
+  const isHost = hostOrOptions != null && typeof (hostOrOptions as Element).append === 'function';
+  const host = isHost ? hostOrOptions as Element : document.body;
+  const options = isHost ? maybeOptions : hostOrOptions as BambooCicadaOptions | undefined;
   const element = document.createElement('bamboo-cicada') as BambooCicadaElement;
-  element.configure(options);
+  element.configure(options ?? {});
   host.append(element);
   return element;
 }

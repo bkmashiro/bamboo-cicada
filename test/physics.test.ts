@@ -1,23 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { angularVelocity, soundLevel } from '../src/physics';
+import { createPhysics, stepPhysics, type PhysicsState } from '../src/physics';
 
-describe('angularVelocity', () => {
-  it('measures the shortest signed turn across the ±π boundary', () => {
-    expect(angularVelocity(Math.PI - 0.1, -Math.PI + 0.1, 0.1)).toBeCloseTo(2);
+describe('rope physics', () => {
+  it('starts with a hanging body and a slack-safe rope', () => {
+    const state = createPhysics({ x: 120, y: 90 }, { ropeLength: 110 });
+    expect(state.body.y).toBeGreaterThan(state.anchor.y);
+    expect(state.rope.distance).toBeLessThanOrEqual(110);
+    expect(state.rope.tension).toBe(0);
   });
 
-  it('returns zero when elapsed time is not positive', () => {
-    expect(angularVelocity(0, 1, 0)).toBe(0);
-  });
-});
-
-describe('soundLevel', () => {
-  it('stays silent below the play threshold', () => {
-    expect(soundLevel(2, 3)).toBe(0);
+  it('uses a rope that pulls but never pushes', () => {
+    const slack: PhysicsState = createPhysics({ x: 100, y: 100 }, { ropeLength: 120 });
+    slack.body = { x: 100, y: 120, vx: 0, vy: 0 };
+    stepPhysics(slack, 1 / 240);
+    expect(slack.rope.tension).toBe(0);
   });
 
-  it('ramps smoothly and clamps to one', () => {
-    expect(soundLevel(5, 3)).toBeGreaterThan(0);
-    expect(soundLevel(100, 3)).toBe(1);
+  it('turns circular anchor motion into body angular velocity while remaining bounded', () => {
+    const state = createPhysics({ x: 160, y: 150 }, { ropeLength: 105 });
+    let peakAngularVelocity = 0;
+    for (let frame = 0; frame < 720; frame += 1) {
+      const angle = frame / 720 * Math.PI * 8;
+      state.anchor.x = 160 + Math.cos(angle) * 36;
+      state.anchor.y = 150 + Math.sin(angle) * 36;
+      stepPhysics(state, 1 / 120);
+      peakAngularVelocity = Math.max(peakAngularVelocity, Math.abs(state.rope.angularVelocity));
+    }
+    expect(peakAngularVelocity).toBeGreaterThan(1);
+    expect(state.rope.distance).toBeLessThan(155);
+    expect(state.rope.tension).toBeGreaterThanOrEqual(0);
+  });
+
+  it('sanitizes unsafe developer physics overrides before integration', () => {
+    const state = createPhysics(
+      { x: 10, y: 20 },
+      { ropeLength: -1, stiffness: Number.NaN, radialDamping: -4, gravity: Number.POSITIVE_INFINITY, airDrag: -2, fixedStep: 0 },
+    );
+    expect(state.options.ropeLength).toBeGreaterThan(0);
+    expect(state.options.fixedStep).toBeGreaterThan(0);
+    expect(Object.values(state.options).every(Number.isFinite)).toBe(true);
+    expect(() => stepPhysics(state, 1)).not.toThrow();
+    expect(Number.isFinite(state.body.x)).toBe(true);
+    expect(Number.isFinite(state.body.y)).toBe(true);
+  });
+
+  it('is stable across a large frame split into fixed substeps', () => {
+    const state = createPhysics({ x: 140, y: 100 });
+    state.anchor.x += 60;
+    stepPhysics(state, 0.08);
+    expect(Number.isFinite(state.body.x)).toBe(true);
+    expect(Number.isFinite(state.body.vy)).toBe(true);
+    expect(state.rope.distance).toBeLessThan(220);
   });
 });

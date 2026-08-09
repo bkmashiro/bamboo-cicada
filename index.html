@@ -3,35 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f4ead0" />
-  <title>Bamboo Cicada · 任意网页里的竹知了</title>
+  <meta name="theme-color" content="#e9e3ce" />
+  <title>山野小报 · Bamboo Cicada 本地试玩</title>
   <style>
-    :root { color: #26352c; background: #f5ead0; font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif; }
+    :root { color: #203128; background: #e9e3ce; font-family: "Songti SC", "STSong", Georgia, serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 12% 10%, #fff9e9 0 14%, transparent 32%), #f5ead0; }
-    main { width: min(68rem, calc(100% - 2rem)); min-height: 100vh; margin: auto; display: grid; grid-template-columns: 1fr minmax(18rem, 23rem); gap: clamp(2rem, 7vw, 7rem); align-items: center; padding: 3rem 0; }
-    .eyebrow { color: #b45737; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-    h1 { max-width: 10ch; margin: .7rem 0 1.2rem; font-size: clamp(3rem, 7vw, 6.3rem); line-height: .93; letter-spacing: -.055em; }
-    .lead { max-width: 31rem; color: #526257; font-size: clamp(1rem, 2vw, 1.2rem); line-height: 1.75; }
-    code { display: block; width: fit-content; max-width: 100%; margin-top: 1.8rem; padding: .9rem 1rem; overflow-x: auto; border: 1px solid #26352c1a; border-radius: .8rem; background: #fff8e7b8; color: #81472f; font: 600 .78rem/1.6 ui-monospace, monospace; white-space: nowrap; }
-    .features { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.2rem; }
-    .features span { padding: .45rem .7rem; border-radius: 99rem; background: #dfe8c9; font-size: .75rem; font-weight: 700; }
-    .demo { justify-self: end; width: 100%; filter: drop-shadow(0 2rem 2rem rgba(65, 78, 42, .12)); }
-    bamboo-cicada { width: 100%; }
-    @media (max-width: 720px) { main { grid-template-columns: 1fr; padding-top: 4rem; } h1 { max-width: none; } .demo { justify-self: center; width: min(100%, 22rem); } }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-height: 180vh; overflow-x: hidden; background: #eee9d8; }
+    button, code { font: inherit; }
+    .site-header { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; width: min(1120px, calc(100% - 36px)); margin: auto; padding: 24px 0 18px; border-bottom: 1px solid rgba(31,49,40,.22); }
+    .brand { display: flex; align-items: center; gap: 12px; font: 800 17px/1 system-ui, sans-serif; letter-spacing: .16em; }
+    .seal { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 5px; color: #f4ead2; background: #a63a2a; font: 800 13px/1 serif; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+    nav { display: flex; gap: 24px; color: #53635a; font: 600 13px/1 system-ui, sans-serif; }
+    nav a { color: inherit; text-decoration: none; }
+    .hero { position: relative; min-height: 820px; overflow: hidden; border-bottom: 1px solid rgba(31,49,40,.15); }
+    .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 70% 20%, rgba(255,246,196,.86) 0 7%, transparent 20%), linear-gradient(155deg, #dfe8d2 0 38%, #e9d9b6 74%, #e7cda4); }
+    .sun { position: absolute; right: 18%; top: 84px; width: 124px; aspect-ratio: 1; border-radius: 50%; background: #e9683e; opacity: .88; box-shadow: 0 0 70px rgba(232,104,62,.18); }
+    .hill { position: absolute; left: -8%; right: -8%; bottom: -290px; height: 520px; border-radius: 52% 48% 0 0; background: #526d55; transform: rotate(-3deg); }
+    .hill.back { left: 30%; right: -20%; bottom: -325px; background: #829579; transform: rotate(8deg); }
+    .grain { position: absolute; inset: 0; opacity: .16; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.2'/%3E%3C/svg%3E"); }
+    .hero-copy { position: relative; z-index: 1; width: min(1120px, calc(100% - 36px)); margin: auto; padding-top: clamp(86px, 13vw, 154px); }
+    .kicker { display: flex; align-items: center; gap: 14px; color: #9c3528; font: 750 12px/1 system-ui, sans-serif; letter-spacing: .2em; }
+    .kicker::before { content: ''; width: 40px; height: 1px; background: currentColor; }
+    h1 { max-width: 7ch; margin: 22px 0 25px; font-size: clamp(62px, 10vw, 126px); font-weight: 600; line-height: .9; letter-spacing: -.08em; }
+    .intro { max-width: 470px; margin: 0; color: #4d5f55; font-size: 17px; line-height: 1.9; }
+    .scroll-mark { display: inline-flex; align-items: center; gap: 12px; margin-top: 44px; color: #56665d; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .13em; }
+    .scroll-mark::before { content: '↓'; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid currentColor; border-radius: 50%; }
+    .stories { position: relative; width: min(1120px, calc(100% - 36px)); margin: auto; padding: 90px 0 150px; }
+    .stories-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 36px; }
+    .stories h2 { margin: 0; font-size: clamp(35px, 5vw, 62px); font-weight: 550; letter-spacing: -.04em; }
+    .stories-head span { color: #69776f; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .15em; }
+    .story-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 22px; }
+    article { min-height: 260px; padding: 34px; border: 1px solid rgba(31,49,40,.16); background: rgba(250,247,235,.54); }
+    article:first-child { min-height: 370px; background: #27483b; color: #f5eedb; }
+    article small { font: 700 11px/1 system-ui, sans-serif; letter-spacing: .15em; opacity: .68; }
+    article h3 { max-width: 12ch; margin: 52px 0 12px; font-size: clamp(28px, 4vw, 49px); font-weight: 550; line-height: 1.08; }
+    article p { max-width: 38em; color: inherit; opacity: .72; line-height: 1.8; }
+    .play-tools { position: fixed; z-index: 2147483001; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 7px; border: 1px solid rgba(31,49,40,.16); border-radius: 999px; background: rgba(249,246,235,.84); box-shadow: 0 12px 35px rgba(32,49,40,.13); backdrop-filter: blur(14px); }
+    .play-tools button { min-height: 38px; padding: 0 15px; border: 0; border-radius: 999px; color: #23382e; background: transparent; cursor: pointer; font: 700 12px/1 system-ui, sans-serif; }
+    .play-tools button:hover, .play-tools button[aria-pressed='true'] { color: #fffaf0; background: #2f5847; }
+    .tip { position: fixed; z-index: 2147483001; right: 24px; bottom: 20px; width: 198px; padding: 12px 15px; border-radius: 13px; color: #fff8e8; background: rgba(35,54,45,.9); font: 600 12px/1.55 system-ui, sans-serif; pointer-events: none; transform: translateY(-390px); transition: opacity .35s, transform .35s; box-shadow: 0 8px 30px rgba(26,38,32,.18); }
+    .tip.hidden { opacity: 0; transform: translateY(-380px); }
+    @media (max-width: 700px) {
+      nav { display: none; }
+      .hero { min-height: 620px; }
+      .hero-copy { padding-top: 88px; }
+      h1 { font-size: 70px; }
+      .sun { right: -25px; top: 120px; width: 104px; }
+      .story-grid { grid-template-columns: 1fr; }
+      .play-tools { bottom: 10px; }
+      .play-tools button { padding: 0 12px; }
+      .tip { right: 16px; bottom: 12px; transform: translateY(-310px); }
+      .tip.hidden { transform: translateY(-300px); }
+    }
   </style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="brand"><span class="seal">野</span>山野小报</div>
+    <nav aria-label="主导航"><a href="#stories">节气</a><a href="#stories">手艺</a><a href="#stories">声音</a></nav>
+  </header>
+
   <main>
-    <section>
-      <div class="eyebrow">Bamboo Cicada · 0 dependencies</div>
-      <h1>把童年的声音，甩回网页里。</h1>
-      <p class="lead">一个轻量、可嵌入、样式完全隔离的 JavaScript 竹知了。按住画圈，转速会驱动运动、音高和音量；也可以点自动按钮偷个懒。</p>
-      <code>&lt;bamboo-cicada label="转起来"&gt;&lt;/bamboo-cicada&gt;</code>
-      <div class="features"><span>Web Component</span><span>Web Audio</span><span>触屏优先</span><span>无素材请求</span></div>
+    <section class="hero">
+      <div class="sun"></div><div class="hill back"></div><div class="hill"></div><div class="grain"></div>
+      <div class="hero-copy">
+        <div class="kicker">LOCAL PLAYGROUND · 夏日号</div>
+        <h1>风从竹梢来</h1>
+        <p class="intro">这是一张普通的本地网页。竹知了由独立 JS 库悬浮挂载在页面之上，不接管背景，也不向外发送任何请求。</p>
+        <a class="scroll-mark" href="#stories">继续阅读</a>
+      </div>
     </section>
-    <div class="demo"><bamboo-cicada label="转起来"></bamboo-cicada></div>
+
+    <section class="stories" id="stories">
+      <div class="stories-head"><h2>夏日风物</h2><span>VOL. 06 · 2026</span></div>
+      <div class="story-grid">
+        <article><small>声音档案 01</small><h3>一根细绳，如何让竹筒开口歌唱</h3><p>握住杆子画圈。杆端牵引绳系质点，绳张紧后，角速度会同时改变音量、音高与音色亮度。</p></article>
+        <article><small>接口样例 02</small><h3>换成你的 DOM</h3><p>默认知了、杆子、音频和物理参数都可独立替换；页面样式仍由原网站自己决定。</p></article>
+      </div>
+    </section>
   </main>
-  <script type="module" src="/src/index.ts"></script>
+
+  <div class="tip" id="tip">抓住杆子或竹知了，按住画圈甩起来</div>
+  <div class="play-tools" aria-label="试玩控制">
+    <button id="auto" type="button" aria-pressed="false">自动甩</button>
+    <button id="sound" type="button" aria-pressed="true">声音开</button>
+  </div>
+  <script type="module" src="/demo.ts"></script>
 </body>
 </html>

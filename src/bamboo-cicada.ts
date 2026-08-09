@@ -1,151 +1,249 @@
-import { CicadaVoice, type SoundVoice } from './audio';
-import { angularVelocity, damp, soundLevel } from './physics';
-import { styles } from './styles';
+import { SynthCicadaVoice, type CicadaVoice } from './audio';
+import { createPhysics, stepPhysics, type PhysicsOptions, type PhysicsState, type Point } from './physics';
+import { DefaultCicadaRenderer } from './renderer';
+import type { CicadaParts, CicadaRenderer, MotionState, PartSource } from './types';
 
 export interface BambooCicadaOptions {
+  /** Accessible name. The component renders no visible title. */
   label?: string;
+  /** Legacy theming hook retained for compatibility. */
   accent?: string;
   sound?: boolean;
+  inputGain?: number;
   autoStart?: boolean;
+  parts?: CicadaParts;
+  voice?: CicadaVoice | (() => CicadaVoice);
+  renderer?: CicadaRenderer;
+  physics?: Partial<PhysicsOptions>;
 }
 
-const CENTER_X = 160;
-const CENTER_Y = 162;
-const RADIUS = 94;
+const WIDTH = 340;
+const HEIGHT = 430;
+const AUTO_CENTER: Point = { x: 170, y: 150 };
+const AUTO_RADIUS = 42;
+const TAU = Math.PI * 2;
 const HTMLElementBase = (globalThis.HTMLElement ?? class {}) as typeof HTMLElement;
 
+const defaults = {
+  label: '可甩动的竹知了',
+  accent: '#a72620',
+  sound: true,
+  inputGain: 1.45,
+  autoStart: false,
+};
+
 export class BambooCicadaElement extends HTMLElementBase {
-  private options: Required<BambooCicadaOptions> = {
-    label: '竹知了',
-    accent: '#d86f45',
-    sound: true,
-    autoStart: false,
-  };
-  private readonly voice: SoundVoice = new CicadaVoice();
-  private angle = Math.PI / 2;
-  private speed = 0;
+  private options: BambooCicadaOptions = { ...defaults };
+  private physics: PhysicsState = createPhysics({ x: 170, y: 128 });
+  private target: Point = { ...this.physics.anchor };
+  private renderer?: CicadaRenderer;
+  private voice?: CicadaVoice;
+  private ownsVoice = false;
   private pointerId: number | null = null;
-  private previousPointerAngle = 0;
-  private previousPointerTime = 0;
+  private dragStart: Point = { x: 0, y: 0 };
+  private anchorAtDragStart: Point = { x: 0, y: 0 };
   private auto = false;
+  private autoPhase = -Math.PI / 2;
   private frame = 0;
   private lastFrame = 0;
+  private listening = false;
+  private initialized = false;
   private destroyed = false;
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' }).innerHTML = this.template();
+    this.attachShadow({ mode: 'open' });
   }
 
   connectedCallback(): void {
     this.destroyed = false;
-    const label = this.getAttribute('label');
-    const accent = this.getAttribute('accent');
-    this.configure({
-      ...(label ? { label } : {}),
-      ...(accent ? { accent } : {}),
-    });
-    this.stage.addEventListener('pointerdown', this.onPointerDown);
-    this.stage.addEventListener('pointermove', this.onPointerMove);
-    this.stage.addEventListener('pointerup', this.onPointerUp);
-    this.stage.addEventListener('pointercancel', this.onPointerUp);
-    this.autoButton.addEventListener('click', this.onAutoClick);
+    this.readAttributes();
+    if (!this.initialized) this.initialize();
+    this.attachInput();
     this.render();
-    if (this.options.autoStart) this.startAuto();
+    if (this.options.autoStart || this.hasAttribute('auto-start')) this.startAuto();
   }
 
   disconnectedCallback(): void {
     this.stopLoop();
-    this.voice.silence();
-    this.stage.removeEventListener('pointerdown', this.onPointerDown);
-    this.stage.removeEventListener('pointermove', this.onPointerMove);
-    this.stage.removeEventListener('pointerup', this.onPointerUp);
-    this.stage.removeEventListener('pointercancel', this.onPointerUp);
-    this.autoButton.removeEventListener('click', this.onAutoClick);
+    this.detachInput();
+    this.voice?.silence();
   }
 
-  configure(options: BambooCicadaOptions): this {
-    this.options = { ...this.options, ...options };
-    this.style.setProperty('--bc-accent', this.options.accent);
-    const label = this.shadowRoot?.querySelector<HTMLElement>('.label');
-    if (label) label.textContent = this.options.label;
-    if (!this.options.sound) this.voice.silence();
+  configure(next: BambooCicadaOptions): this {
+    const rendererChanged = 'renderer' in next && next.renderer !== this.options.renderer;
+    const voiceChanged = 'voice' in next && next.voice !== this.options.voice;
+    const physicsChanged = 'physics' in next && next.physics !== this.options.physics;
+    this.options = { ...this.options, ...next, parts: next.parts ?? this.options.parts };
+    this.setAttribute('aria-label', this.options.label ?? defaults.label);
+    this.style.setProperty('--bc-accent', this.options.accent ?? defaults.accent);
+    if (this.initialized && next.parts) this.applyParts(next.parts);
+
+    if (this.initialized && rendererChanged) this.replaceRenderer();
+    if (this.initialized && voiceChanged) this.replaceVoice();
+    if (physicsChanged) this.resetPhysics();
+    if (this.options.sound === false) this.voice?.silence();
+    if (this.isConnected && next.autoStart === true) this.startAuto();
     return this;
+  }
+
+  get motion(): Readonly<MotionState> {
+    return this.motionState();
+  }
+
+  setAnchor(x: number, y: number): void {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    this.target.x = Math.max(16, Math.min(WIDTH - 16, x));
+    this.target.y = Math.max(16, Math.min(HEIGHT - 16, y));
+    this.startLoop();
   }
 
   startAuto(): void {
     this.auto = true;
-    this.speed = 8.6;
-    this.autoButton.setAttribute('aria-pressed', 'true');
-    this.autoButton.setAttribute('aria-label', '停止自动旋转');
+    this.pointerId = null;
     this.startLoop();
   }
 
   stopAuto(): void {
     this.auto = false;
-    this.autoButton.setAttribute('aria-pressed', 'false');
-    this.autoButton.setAttribute('aria-label', '自动旋转');
   }
 
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
     this.stopLoop();
-    this.voice.destroy();
+    this.detachInput();
+    this.renderer?.destroy();
+    if (this.ownsVoice) this.voice?.destroy(); else this.voice?.silence();
+    this.renderer = undefined;
+    this.voice = undefined;
+    this.initialized = false;
     this.remove();
   }
 
-  private get stage(): HTMLElement {
-    return this.shadowRoot!.querySelector<HTMLElement>('.toy')!;
+  private initialize(): void {
+    this.resetPhysics();
+    this.applyParts(this.options.parts ?? {});
+    this.renderer = this.options.renderer ?? new DefaultCicadaRenderer();
+    this.renderer.mount({ root: this.shadowRoot!, host: this });
+    this.createVoice();
+    this.initialized = true;
   }
 
-  private get autoButton(): HTMLButtonElement {
-    return this.shadowRoot!.querySelector<HTMLButtonElement>('button')!;
+  private readAttributes(): void {
+    const label = this.getAttribute('label');
+    const accent = this.getAttribute('accent');
+    this.options = {
+      ...this.options,
+      ...(label ? { label } : {}),
+      ...(accent ? { accent } : {}),
+      ...(this.hasAttribute('muted') ? { sound: false } : {}),
+    };
+    this.setAttribute('aria-label', this.options.label ?? defaults.label);
+    this.style.setProperty('--bc-accent', this.options.accent ?? defaults.accent);
+  }
+
+  private resetPhysics(): void {
+    this.physics = createPhysics({ x: 170, y: 128 }, this.options.physics);
+    this.target = { ...this.physics.anchor };
+    this.render();
+  }
+
+  private replaceRenderer(): void {
+    this.detachInput();
+    this.renderer?.destroy();
+    this.renderer = this.options.renderer ?? new DefaultCicadaRenderer();
+    this.renderer.mount({ root: this.shadowRoot!, host: this });
+    this.attachInput();
+    this.render();
+  }
+
+  private replaceVoice(): void {
+    if (this.ownsVoice) this.voice?.destroy(); else this.voice?.silence();
+    this.createVoice();
+  }
+
+  private createVoice(): void {
+    const source = this.options.voice;
+    if (typeof source === 'function') {
+      this.voice = source();
+      this.ownsVoice = true;
+    } else if (source) {
+      this.voice = source;
+      this.ownsVoice = false;
+    } else {
+      this.voice = new SynthCicadaVoice();
+      this.ownsVoice = true;
+    }
+  }
+
+  private applyParts(parts: CicadaParts): void {
+    if (parts.cicada) this.installPart('cicada', parts.cicada);
+    if (parts.pole) this.installPart('pole', parts.pole);
+  }
+
+  private installPart(slot: 'cicada' | 'pole', source: PartSource): void {
+    this.querySelector(`[slot="${slot}"][data-bc-managed]`)?.remove();
+    const element = typeof source === 'function' ? source() : source;
+    element.setAttribute('slot', slot);
+    element.setAttribute('data-bc-managed', 'true');
+    this.append(element);
+  }
+
+  private attachInput(): void {
+    if (this.listening) return;
+    const target = this.renderer?.interactionTarget ?? this;
+    target.addEventListener('pointerdown', this.onPointerDown);
+    target.addEventListener('pointermove', this.onPointerMove);
+    target.addEventListener('pointerup', this.onPointerUp);
+    target.addEventListener('pointercancel', this.onPointerUp);
+    this.listening = true;
+  }
+
+  private detachInput(): void {
+    if (!this.listening) return;
+    const target = this.renderer?.interactionTarget ?? this;
+    target.removeEventListener('pointerdown', this.onPointerDown);
+    target.removeEventListener('pointermove', this.onPointerMove);
+    target.removeEventListener('pointerup', this.onPointerUp);
+    target.removeEventListener('pointercancel', this.onPointerUp);
+    this.listening = false;
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
-    if ((event.target as Element).closest('button')) return;
+    if (this.pointerId !== null) return;
     this.stopAuto();
     this.pointerId = event.pointerId;
-    this.stage.setPointerCapture?.(event.pointerId);
-    const angle = this.pointerAngle(event);
-    this.previousPointerAngle = angle;
-    this.previousPointerTime = event.timeStamp;
-    this.angle = angle;
-    this.speed = 0;
-    this.render();
+    const point = this.pointerPoint(event);
+    this.dragStart = point;
+    this.anchorAtDragStart = { ...this.physics.anchor };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    this.startLoop();
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (event.pointerId !== this.pointerId) return;
-    const nextAngle = this.pointerAngle(event);
-    const elapsed = (event.timeStamp - this.previousPointerTime) / 1000;
-    const measured = angularVelocity(this.previousPointerAngle, nextAngle, elapsed);
-    this.speed = this.speed * 0.35 + measured * 0.65;
-    this.angle = nextAngle;
-    this.previousPointerAngle = nextAngle;
-    this.previousPointerTime = event.timeStamp;
-    this.updateSound();
-    this.render();
+    const point = this.pointerPoint(event);
+    const configuredGain = this.options.inputGain ?? defaults.inputGain;
+    const gain = Number.isFinite(configuredGain) ? Math.max(0.1, Math.min(4, configuredGain)) : defaults.inputGain;
+    this.setAnchor(
+      this.anchorAtDragStart.x + (point.x - this.dragStart.x) * gain,
+      this.anchorAtDragStart.y + (point.y - this.dragStart.y) * gain,
+    );
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (event.pointerId !== this.pointerId) return;
     this.pointerId = null;
-    this.stage.releasePointerCapture?.(event.pointerId);
-    this.startLoop();
+    (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
   };
 
-  private readonly onAutoClick = (event: MouseEvent): void => {
-    event.stopPropagation();
-    if (this.auto) this.stopAuto(); else this.startAuto();
-  };
-
-  private pointerAngle(event: PointerEvent): number {
-    const rect = this.stage.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / Math.max(1, rect.width) * 320;
-    const y = (event.clientY - rect.top) / Math.max(1, rect.height) * 400;
-    return Math.atan2(y - CENTER_Y, x - CENTER_X);
+  private pointerPoint(event: PointerEvent): Point {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / Math.max(1, rect.width) * WIDTH,
+      y: (event.clientY - rect.top) / Math.max(1, rect.height) * HEIGHT,
+    };
   }
 
   private startLoop(): void {
@@ -163,65 +261,42 @@ export class BambooCicadaElement extends HTMLElementBase {
     const elapsed = Math.min(0.05, Math.max(0, (time - this.lastFrame) / 1000));
     this.lastFrame = time;
     if (this.auto) {
-      this.speed += (8.6 - this.speed) * Math.min(1, elapsed * 5);
-    } else if (this.pointerId === null) {
-      this.speed = damp(this.speed, elapsed);
+      this.autoPhase += 2.75 * TAU * elapsed;
+      this.target.x = AUTO_CENTER.x + Math.cos(this.autoPhase) * AUTO_RADIUS;
+      this.target.y = AUTO_CENTER.y + Math.sin(this.autoPhase) * AUTO_RADIUS;
     }
-    this.angle += this.speed * elapsed;
-    this.updateSound();
+
+    const follow = 1 - Math.exp(-elapsed * 25);
+    this.physics.anchor.x += (this.target.x - this.physics.anchor.x) * follow;
+    this.physics.anchor.y += (this.target.y - this.physics.anchor.y) * follow;
+    stepPhysics(this.physics, elapsed);
     this.render();
 
-    if (this.auto || this.pointerId !== null || Math.abs(this.speed) > 0.08) {
-      this.frame = requestAnimationFrame(this.tick);
-    } else {
+    const bodySpeed = Math.hypot(this.physics.body.vx, this.physics.body.vy);
+    const moving = this.auto || this.pointerId !== null || bodySpeed > 0.8 || this.physics.activity > 0.01;
+    if (moving) this.frame = requestAnimationFrame(this.tick);
+    else {
       this.frame = 0;
-      this.speed = 0;
-      this.voice.silence();
-      this.render();
+      this.voice?.silence();
     }
   };
 
-  private updateSound(): void {
-    const level = soundLevel(this.speed, 4.5);
-    if (this.options.sound) this.voice.setMotion(this.speed, level);
+  private motionState(): MotionState {
+    return {
+      time: this.physics.time,
+      anchor: this.physics.anchor,
+      body: this.physics.body,
+      rope: this.physics.rope,
+      activity: this.physics.activity,
+      dragging: this.pointerId !== null,
+      auto: this.auto,
+    };
   }
 
   private render(): void {
-    const x = CENTER_X + Math.cos(this.angle) * RADIUS;
-    const y = CENTER_Y + Math.sin(this.angle) * RADIUS;
-    const root = this.shadowRoot;
-    root?.querySelector<SVGLineElement>('.cord')?.setAttribute('x2', x.toFixed(2));
-    root?.querySelector<SVGLineElement>('.cord')?.setAttribute('y2', y.toFixed(2));
-    root?.querySelector<SVGGElement>('.bug')?.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${(this.angle * 180 / Math.PI + 90).toFixed(2)})`);
-    const turns = Math.abs(this.speed) / (Math.PI * 2);
-    const active = turns > 0.7;
-    this.stage.dataset.active = String(active);
-    const readout = root?.querySelector<HTMLElement>('.speed');
-    if (readout) readout.textContent = `${turns.toFixed(1)} 圈/秒`;
-  }
-
-  private template(): string {
-    return `<style>${styles}</style>
-      <section class="toy" role="application" aria-label="可玩的竹知了；按住并绕圈拖动">
-        <div class="topline"><span class="label">竹知了</span><span class="speed" aria-live="polite">0.0 圈/秒</span></div>
-        <svg viewBox="0 0 320 400" aria-hidden="true">
-          <path class="motion" d="M55 166 A106 106 0 0 1 248 98" />
-          <line class="cord" x1="160" y1="162" x2="160" y2="256" />
-          <g>
-            <rect class="handle" x="145" y="62" width="30" height="101" rx="14" />
-            <path class="handle-shine" d="M154 78 V137" />
-            <circle class="hub" cx="160" cy="162" r="8" />
-          </g>
-          <g class="bug" transform="translate(160 256)">
-            <ellipse class="wing" cx="-13" cy="-2" rx="14" ry="7" transform="rotate(-25)" />
-            <ellipse class="wing" cx="13" cy="-2" rx="14" ry="7" transform="rotate(25)" />
-            <rect class="bug-body" x="-13" y="-19" width="26" height="39" rx="12" />
-            <path class="bug-belly" d="M-9 4 Q0 12 9 4 V12 Q0 21 -9 12Z" />
-            <circle class="eye" cx="-5" cy="-10" r="2" /><circle class="eye" cx="5" cy="-10" r="2" />
-          </g>
-        </svg>
-        <button type="button" aria-label="自动旋转" aria-pressed="false">↻</button>
-        <p class="hint">按住画圈甩起来 · 转得越快，叫得越响</p>
-      </section>`;
+    if (!this.renderer) return;
+    const state = this.motionState();
+    this.renderer.render(state);
+    if (this.options.sound !== false) this.voice?.update(state);
   }
 }

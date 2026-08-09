@@ -1,80 +1,187 @@
 # bamboo-cicada
 
-把一只可以玩的竹知了嵌进任意网页。零运行时依赖，使用 Web Component 隔离样式，用指针转速驱动动画和 Web Audio 合成声音。
+一个可以外挂到任意网页上的悬浮竹知了。默认直接可玩，同时允许替换知了 DOM、杆子 DOM、声音实现、渲染器与物理参数。
 
-> 本项目是独立实现：未复制参考项目 `imsai-sh/zhuzhiliao` 的源码、录音、图像或其他素材。
+- 运行时零依赖
+- Web Component + Shadow DOM
+- 页面上只渲染杆、绳和知了，没有卡片、标题或背景
+- 指针驱动的绳系质点物理
+- Web Audio 合成声音；转速影响音高、音色和音量
+- 完全本地运行，不请求素材或后端
 
-## 快速使用
+> 本项目为独立实现，未复制参考项目 `imsai-sh/zhuzhiliao` 的源码、录音、图像或三维素材。
 
-### npm
+## 最快使用
 
-```bash
-pnpm add bamboo-cicada
-```
-
-```js
+```ts
 import { mountBambooCicada } from 'bamboo-cicada';
 
-const toy = mountBambooCicada(document.querySelector('#toy'), {
-  label: '转起来',
-  accent: '#d86f45',
-});
-
-// 可选控制
-toy.startAuto();
-toy.stopAuto();
-toy.destroy();
+mountBambooCicada(); // 默认挂载到 document.body，固定悬浮在右下角
 ```
 
-### 直接使用 Web Component
+旧的 host-first 调用仍然可用：
 
-先加载模块，再在任意位置写标签：
+```ts
+mountBambooCicada(document.querySelector('#some-host')!);
+```
+
+也可以声明式使用：
 
 ```html
 <script type="module">
   import 'bamboo-cicada';
 </script>
 
-<bamboo-cicada label="转起来" accent="#d86f45"></bamboo-cicada>
+<bamboo-cicada></bamboo-cicada>
 ```
 
-元素宽度跟随容器，默认最大宽度为 `22rem`。可以直接通过 CSS 调整：
+## 交互
 
-```css
-bamboo-cicada { width: 320px; }
+抓住杆子或知了本体，按住后画圈。输入移动的是杆端锚点，知了不会被锁死在圆周上，而是作为一个独立质点受到：
+
+- 重力；
+- 空气阻力；
+- 只拉不推的弹性绳张力；
+- 绳方向径向阻尼。
+
+每帧内部以固定小步长积分，页面掉帧时也会限制最大能量注入。松手后，知了继续靠惯性摆动并逐渐停下。默认手势位移有 `1.45×` 增益，方便触屏用较小的拇指圈甩响；可用 `inputGain` 调整或设为 `1`。
+
+```ts
+const toy = mountBambooCicada({ inputGain: 1.2 });
+toy.startAuto();
+toy.stopAuto();
+toy.setAnchor(170, 120); // 340 × 430 逻辑坐标
+console.log(toy.motion);
 ```
 
-## API
+## 是否会变音？
 
-### `mountBambooCicada(host, options?)`
+会。默认 `SynthCicadaVoice` 使用绳方向角速度、绳长比、转动相位和活动强度共同驱动声音：
 
-返回 `BambooCicadaElement`。可用选项：
+- 转得越快：基础频率越高；
+- 转得越快：带通中心频率越高，声音更亮；
+- 每圈相位：产生轻微 detune 摆动；
+- 绳松弛：音量门控为零；
+- 张紧且快速旋转：音量逐渐升高。
 
-| 选项 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `label` | `string` | `竹知了` | 卡片标题 |
-| `accent` | `string` | `#d86f45` | 强调色 |
-| `sound` | `boolean` | `true` | 是否启用合成声音 |
-| `autoStart` | `boolean` | `false` | 挂载后是否自动旋转 |
+映射函数 `mapVoiceParameters(state)` 是公开的，开发者可以复用同一运动状态连接自己的采样器或音频引擎。
 
-实例方法：`configure(options)`、`startAuto()`、`stopAuto()`、`destroy()`。
+## 替换知了或杆子的 DOM
 
-## 本地开发
+### JavaScript
+
+```ts
+const cicada = document.createElement('img');
+cicada.src = '/my-cicada.webp';
+cicada.alt = '我的竹知了';
+cicada.style.width = '80px';
+
+const pole = document.createElement('div');
+pole.className = 'my-pole';
+
+mountBambooCicada({
+  parts: { cicada, pole },
+});
+```
+
+多实例时建议使用 factory，每只玩具都会获得新节点：
+
+```ts
+mountBambooCicada({
+  parts: {
+    cicada: () => document.querySelector<HTMLTemplateElement>('#my-cicada')!.content.firstElementChild!.cloneNode(true) as HTMLElement,
+    pole: () => document.createElement('my-bamboo-pole'),
+  },
+});
+```
+
+### HTML slots
+
+```html
+<bamboo-cicada>
+  <img slot="cicada" src="/my-cicada.webp" alt="我的竹知了" />
+  <div slot="pole" class="my-pole"></div>
+</bamboo-cicada>
+```
+
+组件只变换 slot 外层包装器，因此你的 DOM 内容和内部样式由你自己控制。
+
+## 替换音频
+
+```ts
+import type { CicadaVoice, MotionState } from 'bamboo-cicada';
+
+class SampleVoice implements CicadaVoice {
+  update(state: Readonly<MotionState>) {
+    // 使用 state.rope.angularVelocity / tension / angle 驱动采样器
+  }
+  silence() {}
+  destroy() {}
+}
+
+mountBambooCicada({
+  voice: () => new SampleVoice(),
+});
+```
+
+所有权约定：
+
+- 传 factory：实例由组件拥有，`destroy()` 时一并销毁；
+- 直接传 voice 对象：视为外部共享资源，组件仅调用 `silence()`。
+
+## 调整物理
+
+```ts
+mountBambooCicada({
+  physics: {
+    ropeLength: 150,
+    gravity: 820,
+    stiffness: 2500,
+    radialDamping: 17,
+    airDrag: 0.6,
+  },
+});
+```
+
+完整类型：`PhysicsOptions`、`PhysicsState`、`MotionState`、`RopeState`。
+
+## 替换完整渲染器
+
+```ts
+import type { CicadaRenderer } from 'bamboo-cicada';
+
+const renderer: CicadaRenderer = {
+  mount({ root, host }) {
+    // 可在这里建立 Canvas、SVG、Three.js 或任意 DOM 渲染层
+  },
+  render(state) {
+    // state 是统一的杆端、质点、绳和发声活动状态
+  },
+  destroy() {},
+};
+
+mountBambooCicada({ renderer });
+```
+
+默认 `DefaultCicadaRenderer` 只是一个实现。3D 可以作为独立 renderer 包接入，不需要进入核心物理或音频层。
+
+## 本地试玩
 
 ```bash
 pnpm install
 pnpm dev
+```
+
+试玩页是一张普通的本地网页，竹知了通过 `mountBambooCicada()` 额外挂载；网络面板中不会出现素材或后端请求。
+
+## 验证
+
+```bash
 pnpm test
 pnpm typecheck
 pnpm build
+pnpm pack
 ```
-
-## 技术边界
-
-- 声音为 Web Audio 实时合成，不含第三方录音。
-- 图形为本项目原创 SVG 几何造型，不含外部图片。
-- 浏览器要求支持 Custom Elements、Shadow DOM 和 Pointer Events。
-- 浏览器会要求一次用户手势后才允许播放音频，这是 Web Audio 的正常安全策略。
 
 ## License
 
