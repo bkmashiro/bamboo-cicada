@@ -49,11 +49,26 @@ const sampleOutputs = {
   volume: document.querySelector<HTMLOutputElement>('#sample-volume-out')!,
 };
 const audioUpload = document.querySelector<HTMLInputElement>('#audio-upload')!;
+const audioPool = document.querySelector<HTMLSelectElement>('#audio-pool')!;
 const audioStatus = document.querySelector<HTMLOutputElement>('#audio-status')!;
+const imageUpload = document.querySelector<HTMLInputElement>('#image-upload')!;
+const imageSocketEditor = document.querySelector<HTMLElement>('#image-socket-editor')!;
+const imageSocketX = document.querySelector<HTMLInputElement>('#image-socket-x')!;
+const imageSocketY = document.querySelector<HTMLInputElement>('#image-socket-y')!;
+const imageSocketXOut = document.querySelector<HTMLOutputElement>('#image-socket-x-out')!;
+const imageSocketYOut = document.querySelector<HTMLOutputElement>('#image-socket-y-out')!;
+const imageSocketStatus = document.querySelector<HTMLOutputElement>('#image-socket-status')!;
 
 let auto = false;
 let sound = true;
 let audioSelection = 0;
+let audioPoolSequence = 0;
+let uploadedImageUrl: string | undefined;
+let activeCicadaSkin = 'default';
+let activeAudioPoolId = 'physical';
+const userVoicePool = new Map<string, File>();
+const MAX_USER_VOICES = 8;
+const MAX_VOICE_POOL_BYTES = 40 * 1024 * 1024;
 
 const emojiCicada = document.createElement('span');
 emojiCicada.className = 'demo-emoji-part';
@@ -64,6 +79,16 @@ const rocketCicada = document.createElement('img');
 rocketCicada.className = 'demo-rocket-part';
 rocketCicada.src = new URL('./skins/cicada-rocket.webp', window.location.href).href;
 rocketCicada.alt = '带红色吊环的竹蝉飞船';
+
+const uploadedCicada = document.createElement('span');
+uploadedCicada.className = 'uploaded-cicada-part';
+uploadedCicada.setAttribute('aria-label', '用户上传的知了图片');
+const uploadedCicadaImage = document.createElement('img');
+uploadedCicadaImage.alt = '';
+const uploadedCicadaSocket = document.createElement('span');
+uploadedCicadaSocket.className = 'part-socket';
+uploadedCicadaSocket.setAttribute('aria-hidden', 'true');
+uploadedCicada.append(uploadedCicadaImage, uploadedCicadaSocket);
 
 const liveButton = document.createElement('button');
 liveButton.type = 'button';
@@ -91,11 +116,28 @@ function syncSkinButtons(selector: string, active: string): void {
   });
 }
 
+function uploadedSocket(): { x: number; y: number } {
+  return { x: number(imageSocketX), y: number(imageSocketY) };
+}
+
+function applyUploadedSocket(): void {
+  const socket = uploadedSocket();
+  uploadedCicada.style.setProperty('--upload-socket-x', `${socket.x * 100}%`);
+  uploadedCicada.style.setProperty('--upload-socket-y', `${socket.y * 100}%`);
+  imageSocketXOut.value = socket.x.toFixed(2);
+  imageSocketYOut.value = socket.y.toFixed(2);
+  if (activeCicadaSkin === 'upload' && uploadedImageUrl) {
+    toy.configure({ parts: { cicada: { source: uploadedCicada, socket } } });
+  }
+}
+
 function setCicadaSkin(skin: string): void {
   if (skin === 'emoji') toy.configure({ parts: { cicada: { source: emojiCicada, socket: { x: 0.5, y: 0.16 } } } });
   else if (skin === 'rocket') toy.configure({ parts: { cicada: { source: rocketCicada, socket: { x: 0.5, y: 0.052 } } } });
   else if (skin === 'button') toy.configure({ parts: { cicada: { source: liveButton, socket: { x: 0.5, y: 0 } } } });
+  else if (skin === 'upload' && uploadedImageUrl) toy.configure({ parts: { cicada: { source: uploadedCicada, socket: uploadedSocket() } } });
   else toy.configure({ parts: { cicada: null } });
+  activeCicadaSkin = skin;
   syncSkinButtons('[data-cicada-skin]', skin);
 }
 
@@ -107,10 +149,59 @@ function setPoleSkin(skin: string): void {
 }
 
 document.querySelectorAll<HTMLButtonElement>('[data-cicada-skin]').forEach((button) => {
-  button.addEventListener('click', () => setCicadaSkin(button.dataset.cicadaSkin ?? 'default'));
+  button.addEventListener('click', () => {
+    if (button.dataset.cicadaSkin === 'upload') imageUpload.click();
+    else setCicadaSkin(button.dataset.cicadaSkin ?? 'default');
+  });
 });
 document.querySelectorAll<HTMLButtonElement>('[data-pole-skin]').forEach((button) => {
   button.addEventListener('click', () => setPoleSkin(button.dataset.poleSkin ?? 'default'));
+});
+
+for (const input of [imageSocketX, imageSocketY]) input.addEventListener('input', applyUploadedSocket);
+
+imageUpload.addEventListener('change', async () => {
+  const file = imageUpload.files?.[0];
+  if (!file) return;
+  const supportedName = /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+  const supportedType = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type);
+  if ((!supportedType && !supportedName) || file.size > 10 * 1024 * 1024) {
+    imageSocketStatus.value = file.size > 10 * 1024 * 1024
+      ? '图片超过 10 MB；没有读取或上传'
+      : '请选择 PNG、JPEG、WebP 或 GIF 图片';
+    imageSocketEditor.hidden = false;
+    imageUpload.value = '';
+    return;
+  }
+
+  const nextUrl = URL.createObjectURL(file);
+  const previousUrl = uploadedImageUrl;
+  try {
+    uploadedCicadaImage.src = nextUrl;
+    await uploadedCicadaImage.decode();
+    const width = Math.max(1, uploadedCicadaImage.naturalWidth);
+    const height = Math.max(1, uploadedCicadaImage.naturalHeight);
+    const scale = Math.min(116 / width, 116 / height, 2);
+    uploadedCicada.style.width = `${Math.max(32, width * scale).toFixed(2)}px`;
+    uploadedCicada.style.height = `${Math.max(32, height * scale).toFixed(2)}px`;
+    uploadedImageUrl = nextUrl;
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+    imageSocketEditor.hidden = false;
+    applyUploadedSocket();
+    setCicadaSkin('upload');
+    imageSocketStatus.value = `${file.name} · 本地图片 · 红环可用 X/Y 对准吊点`;
+  } catch {
+    URL.revokeObjectURL(nextUrl);
+    uploadedCicadaImage.src = previousUrl ?? '';
+    imageSocketEditor.hidden = false;
+    imageSocketStatus.value = `${file.name} · 浏览器无法读取这张图片`;
+  } finally {
+    imageUpload.value = '';
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl);
 });
 
 function number(input: HTMLInputElement): number {
@@ -174,10 +265,9 @@ function sampleSettings() {
   };
 }
 
-function setAudioPressed(name: string): void {
-  document.querySelectorAll<HTMLButtonElement>('[data-audio-preset]').forEach((button) => {
-    button.setAttribute('aria-pressed', String(button.dataset.audioPreset === name));
-  });
+function setAudioPoolSelection(name: string): void {
+  if (audioPool.querySelector(`option[value="${CSS.escape(name)}"]`)) audioPool.value = name;
+  activeAudioPoolId = name;
 }
 
 async function activateVoice(
@@ -186,30 +276,34 @@ async function activateVoice(
   preset: string,
   startMotion = true,
   selection = audioSelection,
-): Promise<void> {
+): Promise<boolean> {
+  await next.unlock();
+  if (selection !== audioSelection) {
+    next.destroy();
+    return false;
+  }
   voice = next;
   sound = true;
   toy.configure({ voice: () => next, sound: true });
-  await next.unlock();
-  if (selection !== audioSelection) return;
   if (startMotion && !auto) {
     auto = true;
     toy.startAuto();
     syncAutoButtons();
   }
-  setAudioPressed(preset);
+  setAudioPoolSelection(preset);
   audioStatus.value = `${label} · 速度、张力、相位和滤波调制已接入`;
   syncSoundButton();
+  return true;
 }
 
-async function activatePhysicalVoice(startMotion = true): Promise<void> {
+async function activatePhysicalVoice(startMotion = true, selection = audioSelection): Promise<boolean> {
   const next = new SynthCicadaVoice({
     friction: number(controls.friction),
     membraneTension: number(controls.membrane),
     tubeLength: number(controls.tubeLength),
     tubeDiameter: number(controls.tubeDiameter),
   });
-  await activateVoice(next, '物理合成器工作中', 'physical', startMotion);
+  return activateVoice(next, '物理合成器工作中', 'physical', startMotion, selection);
 }
 
 async function activateSample(
@@ -218,7 +312,7 @@ async function activateSample(
   preset: string,
   prepared = new SampledCicadaVoice(sampleSettings()),
   selection = audioSelection,
-): Promise<void> {
+): Promise<boolean> {
   const next = prepared;
   audioStatus.value = `${label} · 正在本地解码…`;
   try {
@@ -227,13 +321,14 @@ async function activateSample(
     await next.load(source);
     if (selection !== audioSelection) {
       next.destroy();
-      return;
+      return false;
     }
-    await activateVoice(next, label, preset);
+    return activateVoice(next, label, preset, true, selection);
   } catch (error) {
     next.destroy();
     const message = error instanceof Error ? error.message : '浏览器无法解码这个文件';
     audioStatus.value = `${label} · ${message}`;
+    return false;
   }
 }
 
@@ -248,50 +343,75 @@ for (const input of Object.values(sampleControls)) {
   });
 }
 
-document.querySelectorAll<HTMLButtonElement>('[data-audio-preset]').forEach((button) => {
-  button.addEventListener('click', async () => {
-    const selection = ++audioSelection;
-    const preset = button.dataset.audioPreset;
-    if (preset === 'physical') {
-      await activatePhysicalVoice();
-      return;
-    }
-    const file = preset === 'wood' ? 'wood-gear.mp3' : 'glass-wing.mp3';
-    const label = preset === 'wood' ? '木齿轮' : '玻璃翼';
-    const prepared = new SampledCicadaVoice(sampleSettings());
-    audioStatus.value = `${label} · 正在读取本地样本…`;
-    try {
-      await prepared.unlock();
-      const response = await fetch(new URL(`./audio/${file}`, window.location.href));
-      if (selection !== audioSelection) {
-        prepared.destroy();
-        return;
-      }
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      await activateSample(await response.blob(), label, preset ?? '', prepared, selection);
-    } catch (error) {
+async function selectVoicePoolEntry(poolId: string): Promise<boolean> {
+  const selection = ++audioSelection;
+  if (poolId === 'physical') {
+    return activatePhysicalVoice(true, selection);
+  }
+
+  const uploaded = userVoicePool.get(poolId);
+  if (uploaded) return activateSample(uploaded, uploaded.name, poolId, undefined, selection);
+
+  const file = poolId === 'wood' ? 'wood-gear.mp3' : 'glass-wing.mp3';
+  const label = poolId === 'wood' ? '木齿轮' : '玻璃翼';
+  const prepared = new SampledCicadaVoice(sampleSettings());
+  audioStatus.value = `${label} · 正在读取本地样本…`;
+  try {
+    await prepared.unlock();
+    const response = await fetch(new URL(`./audio/${file}`, window.location.href));
+    if (selection !== audioSelection) {
       prepared.destroy();
-      if (selection !== audioSelection) return;
-      const message = error instanceof Error ? error.message : '读取失败';
-      audioStatus.value = `${label} · ${message}`;
+      return false;
     }
-  });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return activateSample(await response.blob(), label, poolId, prepared, selection);
+  } catch (error) {
+    prepared.destroy();
+    if (selection !== audioSelection) return false;
+    const message = error instanceof Error ? error.message : '读取失败';
+    audioStatus.value = `${label} · ${message}`;
+    audioPool.value = activeAudioPoolId;
+    return false;
+  }
+}
+
+audioPool.addEventListener('change', async () => {
+  const requested = audioPool.value;
+  const selected = await selectVoicePoolEntry(requested);
+  if (!selected) audioPool.value = activeAudioPoolId;
 });
 
 audioUpload.addEventListener('change', async () => {
-  const selection = ++audioSelection;
   const file = audioUpload.files?.[0];
   if (!file) return;
   const supportedName = /\.(wav|mp3|m4a|aac|ogg|oga|flac|webm)$/i.test(file.name);
+  const currentBytes = [...userVoicePool.values()].reduce((total, entry) => total + entry.size, 0);
   if ((!file.type.startsWith('audio/') && !supportedName) || file.size > 20 * 1024 * 1024) {
     audioStatus.value = file.size > 20 * 1024 * 1024
-      ? '文件超过 20 MB；没有读取或上传'
+      ? '单个音频超过 20 MB；没有加入声音池'
       : '请选择浏览器支持的音频文件';
     audioUpload.value = '';
     return;
   }
-  setAudioPressed('upload');
-  await activateSample(file, file.name, 'upload', undefined, selection);
+  if (userVoicePool.size >= MAX_USER_VOICES || currentBytes + file.size > MAX_VOICE_POOL_BYTES) {
+    audioStatus.value = userVoicePool.size >= MAX_USER_VOICES
+      ? `声音池最多加入 ${MAX_USER_VOICES} 段本地音频`
+      : '本地声音池总大小不能超过 40 MB';
+    audioUpload.value = '';
+    return;
+  }
+
+  const poolId = `upload-${++audioPoolSequence}`;
+  userVoicePool.set(poolId, file);
+  const option = new Option(`本地 · ${file.name}`, poolId);
+  audioPool.add(option);
+  audioPool.value = poolId;
+  const selected = await selectVoicePoolEntry(poolId);
+  if (!selected) {
+    userVoicePool.delete(poolId);
+    option.remove();
+    audioPool.value = activeAudioPoolId;
+  }
   audioUpload.value = '';
 });
 
