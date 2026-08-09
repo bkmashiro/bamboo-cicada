@@ -241,10 +241,21 @@ function syncSoundButton(): void {
   else soundButton.textContent = '声音：开';
 }
 
-async function unlockSound(): Promise<void> {
-  if (!sound) return;
-  await voice.unlock();
-  syncSoundButton();
+let soundUnlockInFlight: Promise<boolean> | undefined;
+
+async function unlockSound(): Promise<boolean> {
+  if (!sound) return false;
+  if (!soundUnlockInFlight) {
+    const target = voice;
+    soundUnlockInFlight = target.unlock()
+      .then(() => target.playbackState === 'running')
+      .catch(() => false)
+      .finally(() => {
+        soundUnlockInFlight = undefined;
+        syncSoundButton();
+      });
+  }
+  return soundUnlockInFlight;
 }
 
 function toggleAuto(): void {
@@ -422,11 +433,29 @@ controls.rope.addEventListener('input', applyRopeControl);
 autoButton.addEventListener('click', toggleAuto);
 heroPlay.addEventListener('click', toggleAuto);
 
-document.addEventListener('pointerdown', (event) => {
-  if (!event.composedPath().includes(soundButton)) void unlockSound();
-}, { capture: true, once: true });
+const soundUnlockEvents = ['touchstart', 'pointerdown', 'click', 'keydown'] as const;
+
+function removeDefaultSoundUnlock(): void {
+  soundUnlockEvents.forEach((type) => document.removeEventListener(type, unlockDefaultSound, true));
+}
+
+function unlockDefaultSound(event: Event): void {
+  if (event.composedPath().includes(soundButton)) return;
+  void unlockSound().then((running) => {
+    if (running) removeDefaultSoundUnlock();
+  });
+}
+
+soundUnlockEvents.forEach((type) => {
+  document.addEventListener(type, unlockDefaultSound, { capture: true, passive: type === 'touchstart' });
+});
 
 soundButton.addEventListener('click', async () => {
+  if (sound && voice.playbackState !== 'running') {
+    toy.configure({ sound: true });
+    await unlockSound();
+    return;
+  }
   sound = !sound;
   toy.configure({ sound });
   if (sound) await unlockSound();
