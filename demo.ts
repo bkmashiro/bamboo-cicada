@@ -144,12 +144,10 @@ function syncAutoButtons(): void {
 }
 
 function syncSoundButton(): void {
-  const running = sound && voice.playbackState === 'running';
-  soundButton.setAttribute('aria-pressed', String(running));
+  soundButton.setAttribute('aria-pressed', String(sound));
   if (!sound) soundButton.textContent = '声音：关';
-  else if (running) soundButton.textContent = '声音：开';
   else if (voice.playbackState === 'unsupported') soundButton.textContent = '浏览器无音频';
-  else soundButton.textContent = '启用声音';
+  else soundButton.textContent = '声音：开';
 }
 
 async function unlockSound(): Promise<void> {
@@ -304,8 +302,12 @@ controls.rope.addEventListener('input', applyRopeControl);
 autoButton.addEventListener('click', toggleAuto);
 heroPlay.addEventListener('click', toggleAuto);
 
+document.addEventListener('pointerdown', (event) => {
+  if (!event.composedPath().includes(soundButton)) void unlockSound();
+}, { capture: true, once: true });
+
 soundButton.addEventListener('click', async () => {
-  sound = !(sound && voice.playbackState === 'running');
+  sound = !sound;
   toy.configure({ sound });
   if (sound) await unlockSound();
   else syncSoundButton();
