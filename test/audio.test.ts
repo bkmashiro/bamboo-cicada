@@ -6,6 +6,7 @@ import {
   mapVoiceParameters,
   SynthCicadaVoice,
 } from '../src/audio';
+import { SampledCicadaVoice, mapSampleMotion } from '../src/sample-audio';
 import type { MotionState } from '../src/index';
 
 const motion = (
@@ -50,18 +51,24 @@ class FakeWebkitAudioContext {
   static delays: ReturnType<typeof audioNode>[] = [];
   static gains: ReturnType<typeof audioNode>[] = [];
   static shapers: ReturnType<typeof audioNode>[] = [];
+  static sources: (ReturnType<typeof audioNode> & { buffer: unknown; loop: boolean })[] = [];
   state: AudioContextState = 'suspended';
   currentTime = 0;
   sampleRate = 48_000;
   destination = audioNode();
   constructor() { FakeWebkitAudioContext.constructions += 1; }
   createOscillator() { return audioNode(); }
-  createBufferSource() { return { ...audioNode(), buffer: null, loop: false }; }
+  createBufferSource() {
+    const source = { ...audioNode(), buffer: null as unknown, loop: false };
+    FakeWebkitAudioContext.sources.push(source);
+    return source;
+  }
   createGain() { const node = audioNode(); FakeWebkitAudioContext.gains.push(node); return node; }
   createBiquadFilter() { const node = audioNode(); FakeWebkitAudioContext.filters.push(node); return node; }
   createDelay() { const node = audioNode(); FakeWebkitAudioContext.delays.push(node); return node; }
   createWaveShaper() { const node = audioNode(); FakeWebkitAudioContext.shapers.push(node); return node; }
   createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
+  async decodeAudioData() { return { duration: 1.25 } as AudioBuffer; }
   async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; }
 }
@@ -73,6 +80,7 @@ afterEach(() => {
   FakeWebkitAudioContext.delays = [];
   FakeWebkitAudioContext.gains = [];
   FakeWebkitAudioContext.shapers = [];
+  FakeWebkitAudioContext.sources = [];
 });
 
 describe('source-filter voice model', () => {
@@ -238,5 +246,63 @@ describe('source-filter voice model', () => {
     const slack = mapVoiceParameters(motion(Math.PI * 6, 0, 0, 0.5));
     expect(slack.gain).toBe(0);
     expect(slack.noiseGain).toBe(0);
+  });
+});
+
+describe('sampled motion voice', () => {
+  it('maps the shared rope state to gain, pitch, filtering, and rotation AM', () => {
+    const slow = mapSampleMotion(motion(Math.PI * 2, 0));
+    const fast = mapSampleMotion(motion(Math.PI * 10, 0));
+    const slack = mapSampleMotion(motion(Math.PI * 6, 0, 0, 0.5));
+    const preservedPitch = mapSampleMotion(motion(Math.PI * 10), { pitchAmount: 0 });
+
+    expect(fast.playbackRate).toBeGreaterThan(slow.playbackRate);
+    expect(fast.filterFrequency).toBeGreaterThan(slow.filterFrequency);
+    expect(slack.gain).toBe(0);
+    expect(preservedPitch.playbackRate).toBe(1);
+    expect(mapSampleMotion(motion(Math.PI * 6, 0)).modulation)
+      .toBeGreaterThan(mapSampleMotion(motion(Math.PI * 6, Math.PI)).modulation);
+  });
+
+  it('keeps uploaded bytes local and defers AudioContext plus decoding until unlock', async () => {
+    vi.stubGlobal('AudioContext', undefined);
+    (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext = FakeWebkitAudioContext;
+    const voice = new SampledCicadaVoice();
+
+    await voice.load(new Uint8Array([82, 73, 70, 70]).buffer);
+    expect(FakeWebkitAudioContext.constructions).toBe(0);
+    expect(voice.hasSource).toBe(true);
+
+    await voice.unlock();
+    expect(FakeWebkitAudioContext.constructions).toBe(1);
+    expect(FakeWebkitAudioContext.sources).toHaveLength(1);
+    expect(FakeWebkitAudioContext.sources[0]?.loop).toBe(true);
+    expect(FakeWebkitAudioContext.sources[0]?.start).toHaveBeenCalledOnce();
+    expect(FakeWebkitAudioContext.filters.some((filter) => filter.type === 'lowpass')).toBe(true);
+    expect(FakeWebkitAudioContext.shapers.at(-1)?.oversample).toBe('2x');
+
+    voice.update(motion(Math.PI * 8));
+    expect(FakeWebkitAudioContext.sources[0]?.playbackRate.setTargetAtTime).toHaveBeenCalled();
+    expect(FakeWebkitAudioContext.gains.at(-1)?.gain.setTargetAtTime).toHaveBeenCalled();
+    voice.destroy();
+  });
+
+  it('clamps public sample modulation controls', () => {
+    const voice = new SampledCicadaVoice({
+      volume: 99,
+      motionAmount: -1,
+      pitchAmount: 8,
+      filterAmount: Number.NaN,
+      basePlaybackRate: 0,
+      loop: false,
+    });
+    expect(voice.acoustics).toEqual({
+      volume: 2,
+      motionAmount: 0,
+      pitchAmount: 1,
+      filterAmount: 0.72,
+      basePlaybackRate: 0.25,
+      loop: false,
+    });
   });
 });

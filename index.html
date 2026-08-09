@@ -129,6 +129,20 @@
     .demo-live-button .part-socket, .demo-ruler-part .part-socket { position: absolute; left: 50%; top: 0; width: 13px; height: 13px; border: 3px solid #a72620; border-radius: 50%; background: #f8f2e2; translate: -50% -50%; }
     .demo-emoji-pole { display: grid; place-items: start center; width: 64px; height: 145px; font-size: 54px; writing-mode: vertical-rl; }
     .demo-ruler-part { position: relative; width: 24px; height: 148px; border: 2px solid #76501f; border-radius: 6px; background: repeating-linear-gradient(#f2d987 0 10px,#76501f 10px 11px); box-shadow: rgba(23,40,32,.22) 2px 5px 4px; }
+    .audio-skin-lab { position: relative; z-index: 2147483001; grid-column: 1 / -1; margin-top: 8px; padding: 24px; border: 1px solid rgba(33,80,64,.18); border-radius: 24px; background: rgba(255,253,242,.72); box-shadow: 0 18px 44px rgba(56,49,28,.07); }
+    .audio-skin-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .audio-skin-head h3 { margin: 4px 0 0; font: 700 clamp(24px,3vw,38px)/1.05 Georgia,serif; }
+    .audio-skin-head p { max-width: 520px; margin: 0; color: rgba(23,63,53,.68); line-height: 1.65; }
+    .audio-presets { display: flex; flex-wrap: wrap; gap: 9px; }
+    .audio-presets .skin-choice { min-width: 128px; }
+    .audio-upload { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 146px; padding: 12px 15px; border: 1px dashed rgba(23,63,53,.34); border-radius: 14px; color: var(--deep-leaf); background: rgba(255,255,255,.52); font: 700 13px/1.2 system-ui,sans-serif; cursor: pointer; }
+    .audio-upload:hover { border-color: var(--accent); color: var(--accent); }
+    .audio-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .audio-mod-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
+    .audio-control { padding: 11px 12px; border-radius: 14px; background: rgba(232,239,220,.58); }
+    .audio-control label { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: rgba(23,63,53,.78); font: 700 10px/1.2 ui-monospace,monospace; letter-spacing: .05em; }
+    .audio-control input { width: 100%; accent-color: var(--accent); }
+    .audio-status { display: block; min-height: 1.4em; margin-top: 12px; color: rgba(23,63,53,.65); font: 11px/1.5 ui-monospace,monospace; }
 
     .summer-note { padding: 105px 24px 118px; background: var(--paper); }
     .section-inner { width: min(1240px, 100%); margin: auto; }
@@ -192,6 +206,9 @@
       .skin-board { grid-template-columns: 1fr; }
       .skin-flight-zone { height: 210px; }
       .skin-group + .skin-group { border-left: 0; border-top: 1px dashed var(--line); }
+      .audio-skin-head { display: block; }
+      .audio-skin-head p { margin-top: 10px; }
+      .audio-mod-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
       .fit-strip, .signal-chain, .model-note { grid-template-columns: 1fr; }
       .fit-lead { grid-column: auto; }
       .fit-lead, .fit-stat { min-height: 144px; border-right: 0; }
@@ -206,7 +223,7 @@
   <header class="site-header">
     <a class="brand" href="#top"><span class="brand-mark">知了</span>zhuzhiliao</a>
     <nav aria-label="主导航">
-      <a href="#skins">换头台</a><a href="#model">声音从哪来</a><a href="./science.html">科学报告</a><a href="#api">接入网页</a>
+      <a href="#skins">换头台</a><a href="#audio-skin-title">换声音</a><a href="./science.html">科学报告</a><a href="#api">接入网页</a>
       <a href="https://github.com/bkmashiro/bamboo-cicada" target="_blank" rel="noreferrer">GitHub ↗</a>
       <a class="nav-cta" href="https://www.npmjs.com/package/zhuzhiliao" target="_blank" rel="noreferrer">npm ↗</a>
     </nav>
@@ -289,6 +306,25 @@
   }
 }</code>
           </aside>
+          <section class="audio-skin-lab" aria-labelledby="audio-skin-title">
+            <div class="audio-skin-head">
+              <div><span class="section-kicker">MOTION-MODULATED AUDIO</span><h3 id="audio-skin-title">声音也能换，但还得听手腕的。</h3></div>
+              <p>上传内容只在当前浏览器内解码。速度管变调，张紧度管音量，旋转相位管远近，滤波器随甩动打开。</p>
+            </div>
+            <div class="audio-presets" aria-label="音频来源">
+              <button class="skin-choice" type="button" data-audio-preset="physical" aria-pressed="true">物理合成<small>默认膜面 + 竹筒</small></button>
+              <button class="skin-choice" type="button" data-audio-preset="wood" aria-pressed="false">木齿轮<small>原创颗粒 loop</small></button>
+              <button class="skin-choice" type="button" data-audio-preset="glass" aria-pressed="false">玻璃翼<small>原创谐波 loop</small></button>
+              <label class="audio-upload">上传自己的音频<input id="audio-upload" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac,.webm" /></label>
+            </div>
+            <div class="audio-mod-grid">
+              <div class="audio-control"><label for="sample-motion">运动调制 <output id="sample-motion-out">1.00</output></label><input id="sample-motion" type="range" min="0" max="1" step="0.01" value="1" /></div>
+              <div class="audio-control"><label for="sample-pitch">速度变调 <output id="sample-pitch-out">0.35</output></label><input id="sample-pitch" type="range" min="0" max="1" step="0.01" value="0.35" /></div>
+              <div class="audio-control"><label for="sample-filter">动态滤波 <output id="sample-filter-out">0.72</output></label><input id="sample-filter" type="range" min="0" max="1" step="0.01" value="0.72" /></div>
+              <div class="audio-control"><label for="sample-volume">样本音量 <output id="sample-volume-out">1.00</output></label><input id="sample-volume" type="range" min="0.1" max="2" step="0.01" value="1" /></div>
+            </div>
+            <output class="audio-status" id="audio-status" aria-live="polite">物理合成器工作中 · 上传上限 20 MB · 文件不会离开浏览器</output>
+          </section>
         </div>
       </div>
     </section>

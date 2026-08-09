@@ -127,7 +127,47 @@ mountBambooCicada({
 
 组件变换 slot 外层包装器，你的 DOM 内容和内部样式继续由应用控制。
 
-## 替换音频
+## 使用上传或采样音频
+
+`SampledCicadaVoice` 与默认合成器实现同一个 `CicadaVoice` 接口，因此可以直接接入现有物理状态。下面的文件只在当前浏览器内解码；库不会上传、持久化或请求任何远程服务：
+
+```ts
+import { SampledCicadaVoice, mountBambooCicada } from 'zhuzhiliao';
+
+const toy = mountBambooCicada();
+const input = document.querySelector<HTMLInputElement>('#audio-file')!;
+
+input.addEventListener('change', async () => {
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const voice = new SampledCicadaVoice({
+    volume: 1,
+    motionAmount: 1,
+    pitchAmount: 0.35,
+    filterAmount: 0.72,
+    loop: true,
+  });
+
+  // 先在用户手势内 unlock，兼容 iOS；随后才读取/解码文件。
+  await voice.unlock();
+  await voice.load(file);
+  toy.configure({ voice: () => voice });
+});
+```
+
+调制沿用同一个 `MotionState`：
+
+| 物理量 | 采样音频参数 |
+| --- | --- |
+| `activity` + 绳张紧度 | 输出 gain envelope |
+| `abs(angularVelocity)` | `playbackRate`；受 `pitchAmount` 控制 |
+| `rope.angle` | 每圈一次/二次 amplitude modulation |
+| 速度 + 张紧度 | low-pass cutoff；受 `filterAmount` 控制 |
+
+`pitchAmount: 0` 可保留原音高；`motionAmount: 0` 可让音频不随运动静音；运行时可用 `configure()` 连续调整。`load()` 接受 `Blob`、`File` 或 `ArrayBuffer`。远程音频可由应用先自行 `fetch()` 成 `Blob`，并遵守来源的 CORS 与授权条款。
+
+## 默认物理音频
 
 默认声音采用轻量 source–filter physical model：
 

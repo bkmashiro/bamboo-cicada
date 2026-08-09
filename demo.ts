@@ -2,10 +2,11 @@ import {
   defaultCicadaFit,
   mapVoiceParameters,
   mountBambooCicada,
+  SampledCicadaVoice,
   SynthCicadaVoice,
 } from './src/index';
 
-const voice = new SynthCicadaVoice();
+let voice: SynthCicadaVoice | SampledCicadaVoice = new SynthCicadaVoice();
 const toy = mountBambooCicada({ voice: () => voice });
 
 const autoButton = document.querySelector<HTMLButtonElement>('#auto')!;
@@ -35,8 +36,24 @@ const outputs = {
   tubeDiameter: document.querySelector<HTMLOutputElement>('[data-for="tube-diameter"]')!,
 };
 
+const sampleControls = {
+  motionAmount: document.querySelector<HTMLInputElement>('#sample-motion')!,
+  pitchAmount: document.querySelector<HTMLInputElement>('#sample-pitch')!,
+  filterAmount: document.querySelector<HTMLInputElement>('#sample-filter')!,
+  volume: document.querySelector<HTMLInputElement>('#sample-volume')!,
+};
+const sampleOutputs = {
+  motionAmount: document.querySelector<HTMLOutputElement>('#sample-motion-out')!,
+  pitchAmount: document.querySelector<HTMLOutputElement>('#sample-pitch-out')!,
+  filterAmount: document.querySelector<HTMLOutputElement>('#sample-filter-out')!,
+  volume: document.querySelector<HTMLOutputElement>('#sample-volume-out')!,
+};
+const audioUpload = document.querySelector<HTMLInputElement>('#audio-upload')!;
+const audioStatus = document.querySelector<HTMLOutputElement>('#audio-status')!;
+
 let auto = false;
 let sound = true;
+let audioSelection = 0;
 
 const emojiCicada = document.createElement('span');
 emojiCicada.className = 'demo-emoji-part';
@@ -101,6 +118,7 @@ function number(input: HTMLInputElement): number {
 }
 
 function applyMaterialControls(): void {
+  if (!(voice instanceof SynthCicadaVoice)) return;
   voice.configure({
     friction: number(controls.friction),
     membraneTension: number(controls.membrane),
@@ -149,6 +167,136 @@ function toggleAuto(): void {
   syncAutoButtons();
 }
 
+function sampleSettings() {
+  return {
+    motionAmount: number(sampleControls.motionAmount),
+    pitchAmount: number(sampleControls.pitchAmount),
+    filterAmount: number(sampleControls.filterAmount),
+    volume: number(sampleControls.volume),
+  };
+}
+
+function setAudioPressed(name: string): void {
+  document.querySelectorAll<HTMLButtonElement>('[data-audio-preset]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.audioPreset === name));
+  });
+}
+
+async function activateVoice(
+  next: SynthCicadaVoice | SampledCicadaVoice,
+  label: string,
+  preset: string,
+  startMotion = true,
+  selection = audioSelection,
+): Promise<void> {
+  voice = next;
+  sound = true;
+  toy.configure({ voice: () => next, sound: true });
+  await next.unlock();
+  if (selection !== audioSelection) return;
+  if (startMotion && !auto) {
+    auto = true;
+    toy.startAuto();
+    syncAutoButtons();
+  }
+  setAudioPressed(preset);
+  audioStatus.value = `${label} · 速度、张力、相位和滤波调制已接入`;
+  syncSoundButton();
+}
+
+async function activatePhysicalVoice(startMotion = true): Promise<void> {
+  const next = new SynthCicadaVoice({
+    friction: number(controls.friction),
+    membraneTension: number(controls.membrane),
+    tubeLength: number(controls.tubeLength),
+    tubeDiameter: number(controls.tubeDiameter),
+  });
+  await activateVoice(next, '物理合成器工作中', 'physical', startMotion);
+}
+
+async function activateSample(
+  source: Blob,
+  label: string,
+  preset: string,
+  prepared = new SampledCicadaVoice(sampleSettings()),
+  selection = audioSelection,
+): Promise<void> {
+  const next = prepared;
+  audioStatus.value = `${label} · 正在本地解码…`;
+  try {
+    // Resume inside the user gesture before fetch/File decoding can consume activation.
+    await next.unlock();
+    await next.load(source);
+    if (selection !== audioSelection) {
+      next.destroy();
+      return;
+    }
+    await activateVoice(next, label, preset);
+  } catch (error) {
+    next.destroy();
+    const message = error instanceof Error ? error.message : '浏览器无法解码这个文件';
+    audioStatus.value = `${label} · ${message}`;
+  }
+}
+
+for (const input of Object.values(sampleControls)) {
+  input.addEventListener('input', () => {
+    const settings = sampleSettings();
+    sampleOutputs.motionAmount.value = settings.motionAmount.toFixed(2);
+    sampleOutputs.pitchAmount.value = settings.pitchAmount.toFixed(2);
+    sampleOutputs.filterAmount.value = settings.filterAmount.toFixed(2);
+    sampleOutputs.volume.value = settings.volume.toFixed(2);
+    if (voice instanceof SampledCicadaVoice) voice.configure(settings);
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>('[data-audio-preset]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const selection = ++audioSelection;
+    const preset = button.dataset.audioPreset;
+    if (preset === 'physical') {
+      await activatePhysicalVoice();
+      return;
+    }
+    const file = preset === 'wood' ? 'wood-gear.mp3' : 'glass-wing.mp3';
+    const label = preset === 'wood' ? '木齿轮' : '玻璃翼';
+    const prepared = new SampledCicadaVoice(sampleSettings());
+    audioStatus.value = `${label} · 正在读取本地样本…`;
+    try {
+      await prepared.unlock();
+      const response = await fetch(new URL(`./audio/${file}`, window.location.href));
+      if (selection !== audioSelection) {
+        prepared.destroy();
+        return;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await activateSample(await response.blob(), label, preset ?? '', prepared, selection);
+    } catch (error) {
+      prepared.destroy();
+      if (selection !== audioSelection) return;
+      const message = error instanceof Error ? error.message : '读取失败';
+      audioStatus.value = `${label} · ${message}`;
+    }
+  });
+});
+
+audioUpload.addEventListener('change', async () => {
+  const selection = ++audioSelection;
+  const file = audioUpload.files?.[0];
+  if (!file) return;
+  const supportedName = /\.(wav|mp3|m4a|aac|ogg|oga|flac|webm)$/i.test(file.name);
+  if ((!file.type.startsWith('audio/') && !supportedName) || file.size > 20 * 1024 * 1024) {
+    audioStatus.value = file.size > 20 * 1024 * 1024
+      ? '文件超过 20 MB；没有读取或上传'
+      : '请选择浏览器支持的音频文件';
+    audioUpload.value = '';
+    return;
+  }
+  setAudioPressed('upload');
+  await activateSample(file, file.name, 'upload', undefined, selection);
+  audioUpload.value = '';
+});
+
 for (const input of [controls.friction, controls.membrane, controls.tubeLength, controls.tubeDiameter]) {
   input.addEventListener('input', applyMaterialControls);
 }
@@ -163,12 +311,14 @@ soundButton.addEventListener('click', async () => {
   else syncSoundButton();
 });
 
-resetButton.addEventListener('click', () => {
+resetButton.addEventListener('click', async () => {
+  audioSelection += 1;
   controls.friction.value = '1';
   controls.membrane.value = '1';
   controls.rope.value = '116';
   controls.tubeLength.value = String(defaultCicadaFit.hollowTube.lengthMeters * 1000);
   controls.tubeDiameter.value = '42';
+  await activatePhysicalVoice(false);
   applyMaterialControls();
   applyRopeControl();
   setCicadaSkin('default');

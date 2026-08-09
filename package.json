@@ -1,6 +1,6 @@
 {
   "name": "zhuzhiliao",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A physics-driven bamboo cicada that floats over any web page.",
   "keywords": ["zhuzhiliao", "bamboo-cicada", "web-component", "web-audio", "physical-modeling", "physics", "toy"],
   "author": "Yuzhe Shi",
@@ -31,7 +31,7 @@
     }
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config vite.demo.config.ts",
     "build": "vite build && tsc -p tsconfig.lib.json",
     "build:demo": "vite build --config vite.demo.config.ts",
     "typecheck": "tsc --noEmit",

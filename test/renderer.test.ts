@@ -16,4 +16,10 @@ describe('default attachment sockets', () => {
     expect(floatingStyles).toContain('transform: translate(-14px, -9px)');
     expect(floatingStyles).toContain('transform: translate(-38px, -10.5px)');
   });
+
+  it('does not apply custom-part socket translation to the already aligned defaults', () => {
+    expect(floatingStyles).not.toMatch(/\.default-pole[^{}]*\{[^}]*\btranslate:/s);
+    expect(floatingStyles).not.toMatch(/\.default-cicada[^{}]*\{[^}]*\btranslate:/s);
+    expect(floatingStyles).toMatch(/slot\[name='pole'\]::slotted\(\*\)[^{}]*\{[^}]*\btranslate:/s);
+  });
 });
