@@ -36,6 +36,8 @@ const audioNode = () => ({
   gain: audioParam(),
   delayTime: audioParam(),
   Q: audioParam(),
+  curve: null as Float32Array | null,
+  oversample: 'none' as OverSampleType,
   type: '',
   connect(target: unknown) { return target; },
   start: vi.fn(),
@@ -47,6 +49,7 @@ class FakeWebkitAudioContext {
   static filters: ReturnType<typeof audioNode>[] = [];
   static delays: ReturnType<typeof audioNode>[] = [];
   static gains: ReturnType<typeof audioNode>[] = [];
+  static shapers: ReturnType<typeof audioNode>[] = [];
   state: AudioContextState = 'suspended';
   currentTime = 0;
   sampleRate = 48_000;
@@ -57,6 +60,7 @@ class FakeWebkitAudioContext {
   createGain() { const node = audioNode(); FakeWebkitAudioContext.gains.push(node); return node; }
   createBiquadFilter() { const node = audioNode(); FakeWebkitAudioContext.filters.push(node); return node; }
   createDelay() { const node = audioNode(); FakeWebkitAudioContext.delays.push(node); return node; }
+  createWaveShaper() { const node = audioNode(); FakeWebkitAudioContext.shapers.push(node); return node; }
   createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
   async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; }
@@ -68,6 +72,7 @@ afterEach(() => {
   FakeWebkitAudioContext.filters = [];
   FakeWebkitAudioContext.delays = [];
   FakeWebkitAudioContext.gains = [];
+  FakeWebkitAudioContext.shapers = [];
 });
 
 describe('source-filter voice model', () => {
@@ -120,6 +125,12 @@ describe('source-filter voice model', () => {
     expect(tubeLossFilters).toHaveLength(3);
     expect(FakeWebkitAudioContext.gains.some((gain) => gain.gain.value === 0.4)).toBe(true);
     expect(FakeWebkitAudioContext.gains.some((gain) => gain.gain.value === -0.45)).toBe(true);
+    expect(FakeWebkitAudioContext.gains.some((gain) => gain.gain.value === 32)).toBe(true);
+    expect(FakeWebkitAudioContext.shapers).toHaveLength(1);
+    const limiter = FakeWebkitAudioContext.shapers[0]!;
+    expect(limiter.oversample).toBe('2x');
+    expect(limiter.curve?.[0]).toBeCloseTo(-Math.tanh(1), 6);
+    expect(limiter.curve?.[limiter.curve.length - 1]).toBeCloseTo(Math.tanh(1), 6);
     voice.destroy();
   });
 

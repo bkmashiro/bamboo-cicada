@@ -73,6 +73,7 @@ console.log(toy.motion);
 - 小膜辐射先经过 `1863.85 Hz` 高通，压住不合理的 `300–800 Hz` 低频机械位移能量；
 - 一条 `108.86 mm` 的有损竹筒支路以 `0.40` 反射、`1.50` 损耗和 `0.45` 反相耦合叠回直达声，产生短 group delay 与空心脉冲尾；
 - 每圈叠加深度约 `0.66` 的一次 AM 与 `0.35` 的二次 AM；
+- 单位峰值 Web Audio bandpass 后使用 `32×` 模态 make-up，并在末端用 2× oversampled `tanh` soft limiter 保留默认响度、约束极限参数；
 - 绳松弛时音量门控为零；张紧后，张力与结构参数连续改变模态、管口辐射和输出亮度。
 
 映射函数 `mapVoiceParameters(state)` 与只读拟合参数 `defaultCicadaFit` 均为公开 API，开发者可以复用同一运动状态连接自己的采样器或音频引擎。默认实现只使用程序化激励和 Web Audio 节点。

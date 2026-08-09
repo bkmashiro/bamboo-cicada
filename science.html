@@ -75,7 +75,7 @@
         <article><small>03</small><h3>薄膜模态</h3><p>1506.37 与 1760.85 Hz 两个有效模态。</p></article>
         <article><small>04</small><h3>小膜辐射</h3><p>1863.85 Hz 高通抑制低频机械位移。</p></article>
         <article><small>05</small><h3>竹筒波导</h3><p>传播、反射、损耗、管口辐射与反相耦合。</p></article>
-        <article><small>06</small><h3>旋转包络</h3><p>一次与二次 AM 让一圈声音呼吸一次。</p></article>
+        <article><small>06</small><h3>包络与保护</h3><p>旋转 AM、32× 模态补偿与末端 tanh 软限幅。</p></article>
       </div>
     </div></section>
 
@@ -177,7 +177,7 @@
     <section class="chapter" id="limits"><div class="chapter-inner">
       <div class="chapter-head"><div class="chapter-no">06 / EVIDENCE</div><div><h2>它是可解释的实时近似，不是假装完整世界。</h2><p class="chapter-intro">这个模型的目标是在浏览器预算内重建可控、连续、可替换的竹知了声学行为。报告明确记录哪些结论来自拟合，哪些来自物理约束，哪些仍需要听音或新的时域数据。</p></div></div>
       <table aria-label="模型证据与限制"><thead><tr><th>层</th><th>当前证据</th><th>可以声称</th><th>不能单独声称</th></tr></thead><tbody>
-        <tr><td>膜面模态</td><td>300–7000 Hz 平滑频谱拟合</td><td>两个有效峰及 Q 与目标曲线一致</td><td>唯一真实材料参数或完整三维振型</td></tr><tr><td>低频辐射</td><td>加权曲线目标与高通模型</td><td>抑制此前 300–800 Hz 过量</td><td>精确膜面积或远场指向性</td></tr><tr><td>竹筒路径</td><td>hollow feasible region + magnitude fit</td><td>保留非零传播、反射和损耗</td><td>仅凭幅频证明唯一相位响应</td></tr><tr><td>实时损耗</td><td>三级一阶滤波近似</td><td>4 kHz 命中 −13.03 dB，反馈稳定</td><td>全频段精确等于分数幂衰减</td></tr><tr><td>听感</td><td>节点、离线 PCM、频谱与稳定性 QA</td><td>技术链路按设计运行</td><td>替代真实设备、人耳与扬声器试听</td></tr>
+        <tr><td>膜面模态</td><td>300–7000 Hz 平滑频谱拟合</td><td>两个有效峰及 Q 与目标曲线一致</td><td>唯一真实材料参数或完整三维振型</td></tr><tr><td>低频辐射</td><td>加权曲线目标与高通模型</td><td>抑制此前 300–800 Hz 过量</td><td>精确膜面积或远场指向性</td></tr><tr><td>竹筒路径</td><td>hollow feasible region + magnitude fit</td><td>保留非零传播、反射和损耗</td><td>仅凭幅频证明唯一相位响应</td></tr><tr><td>实时损耗</td><td>三级一阶滤波近似</td><td>4 kHz 命中 −13.03 dB，反馈稳定</td><td>全频段精确等于分数幂衰减</td></tr><tr><td>响度与保护</td><td>完整激励 OfflineAudioContext QA</td><td>默认约 −28.08 dBFS RMS；极限状态 0 clipped samples</td><td>所有设备上的固定主观响度</td></tr><tr><td>听感</td><td>节点、离线 PCM、频谱与稳定性 QA</td><td>技术链路按设计运行</td><td>替代真实设备、人耳与扬声器试听</td></tr>
       </tbody></table>
       <div class="callout">下一步最有价值的数据不是继续增加并联滤波器，而是给频谱 RMSE 加一个很小的 phase / group-delay 或 impulse-response hollow score，在近似等价的频谱解中选择更可信的空心响应。</div>
     </div></section>

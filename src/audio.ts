@@ -108,6 +108,9 @@ export const defaultCicadaAcoustics: Readonly<CicadaAcoustics> = Object.freeze({
 const TAU = Math.PI * 2;
 const SPEED_OF_SOUND = 343;
 const TUBE_LOSS_STAGES = 3;
+// Web Audio bandpass filters have unity peak gain; restore the physical modal
+// amplification that the fitted spectral envelope assumes.
+const RESONANCE_MAKEUP_GAIN = 32;
 const EXCITATION_SECONDS = 4;
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 const finite = (value: number | undefined, fallback = 0): number => Number.isFinite(value) ? value as number : fallback;
@@ -127,6 +130,15 @@ function randomNormal(state: { value: number }): number {
   const first = Math.max(1e-9, randomUnit(state));
   const second = randomUnit(state);
   return Math.sqrt(-2 * Math.log(first)) * Math.cos(TAU * second);
+}
+
+function createSoftLimiterCurve(length = 2049): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(new ArrayBuffer(length * Float32Array.BYTES_PER_ELEMENT));
+  for (let index = 0; index < length; index += 1) {
+    const input = index / (length - 1) * 2 - 1;
+    curve[index] = Math.tanh(input);
+  }
+  return curve;
 }
 
 /**
@@ -338,7 +350,9 @@ export class SynthCicadaVoice implements CicadaVoice {
     const tubeMouthRadiation = context.createBiquadFilter();
     const tubeCoupling = context.createGain();
     const outputRolloff = context.createBiquadFilter();
+    const resonanceMakeup = context.createGain();
     const output = context.createGain();
+    const limiter = context.createWaveShaper();
 
     const pulseBuffer = context.createBuffer(1, Math.max(1, Math.floor(context.sampleRate * EXCITATION_SECONDS)), context.sampleRate);
     pulseBuffer.getChannelData(0).set(generateStickSlipExcitation(
@@ -386,7 +400,10 @@ export class SynthCicadaVoice implements CicadaVoice {
     outputRolloff.type = 'lowpass';
     outputRolloff.frequency.value = 6800;
     outputRolloff.Q.value = 0.62;
+    resonanceMakeup.gain.value = RESONANCE_MAKEUP_GAIN;
     output.gain.value = 0;
+    limiter.curve = createSoftLimiterCurve();
+    limiter.oversample = '2x';
 
     pulse.connect(pulseGain).connect(exciter);
     noise.connect(noiseGain).connect(exciter);
@@ -410,7 +427,7 @@ export class SynthCicadaVoice implements CicadaVoice {
     tubeFeedbackLosses.forEach((filter) => { feedbackPath = feedbackPath.connect(filter); });
     feedbackPath.connect(roundTripDelay).connect(tubeReflection).connect(tubeJunction);
     tubeJunction.connect(tubeMouthRadiation).connect(tubeCoupling).connect(outputRolloff);
-    outputRolloff.connect(output).connect(context.destination);
+    outputRolloff.connect(resonanceMakeup).connect(output).connect(limiter).connect(context.destination);
     pulse.start();
     noise.start();
 
