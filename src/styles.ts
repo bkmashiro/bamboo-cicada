@@ -43,6 +43,7 @@ export const floatingStyles = `
     pointer-events: auto;
     cursor: grab;
     touch-action: none;
+    translate: var(--bc-part-offset-x, -50%) var(--bc-part-offset-y, -12.5%);
   }
   .pole:active, .cicada:active { cursor: grabbing; }
   .default-pole {

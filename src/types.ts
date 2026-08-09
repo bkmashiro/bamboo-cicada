@@ -12,9 +12,22 @@ export interface MotionState {
 
 export type PartSource = Element | (() => Element);
 
+/** A normalized point inside a replacement DOM part: (0,0) top-left, (1,1) bottom-right. */
+export interface PartSocket {
+  x: number;
+  y: number;
+}
+
+export interface PartDefinition {
+  source: PartSource;
+  socket?: Partial<PartSocket>;
+}
+
+export type CicadaPart = PartSource | PartDefinition | null;
+
 export interface CicadaParts {
-  cicada?: PartSource;
-  pole?: PartSource;
+  cicada?: CicadaPart;
+  pole?: CicadaPart;
 }
 
 export interface RendererMountContext {

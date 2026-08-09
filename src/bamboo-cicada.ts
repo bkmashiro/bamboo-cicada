@@ -1,7 +1,7 @@
 import { SynthCicadaVoice, type CicadaVoice } from './audio';
 import { createPhysics, stepPhysics, type PhysicsOptions, type PhysicsState, type Point } from './physics';
 import { DefaultCicadaRenderer } from './renderer';
-import type { CicadaParts, CicadaRenderer, MotionState, PartSource } from './types';
+import type { CicadaPart, CicadaParts, CicadaRenderer, MotionState, PartDefinition, PartSocket, PartSource } from './types';
 
 export interface BambooCicadaOptions {
   /** Accessible name. The component renders no visible title. */
@@ -9,6 +9,7 @@ export interface BambooCicadaOptions {
   /** Legacy theming hook retained for compatibility. */
   accent?: string;
   sound?: boolean;
+  /** Extra physical drive applied to the hanging body without changing pointer tracking. */
   inputGain?: number;
   autoStart?: boolean;
   parts?: CicadaParts;
@@ -26,7 +27,12 @@ const AUTO_COMPACT_TURNS_PER_SECOND = 1.9;
 const AUTO_FOLLOW_RATE = 35;
 const AUTO_KICK_TURNS_PER_SECOND = 1.15;
 const AUTO_ASSIST_RATE = 4;
+const MANUAL_DRIVE_IMPULSE = 9;
 const TAU = Math.PI * 2;
+const DEFAULT_PART_SOCKETS: Record<'cicada' | 'pole', PartSocket> = {
+  cicada: { x: 0.5, y: 0.125 },
+  pole: { x: 0.5, y: 0.068 },
+};
 const HTMLElementBase = (globalThis.HTMLElement ?? class {}) as typeof HTMLElement;
 
 const defaults = {
@@ -47,6 +53,9 @@ export class BambooCicadaElement extends HTMLElementBase {
   private ownsRenderer = false;
   private ownsVoice = false;
   private pointerId: number | null = null;
+  private pointerCaptureTarget?: HTMLElement;
+  private pointerDragged = false;
+  private suppressClickUntil = 0;
   private dragStart: Point = { x: 0, y: 0 };
   private anchorAtDragStart: Point = { x: 0, y: 0 };
   private auto = false;
@@ -147,6 +156,7 @@ export class BambooCicadaElement extends HTMLElementBase {
   private initialize(): void {
     this.resetPhysics();
     this.applyParts(this.options.parts ?? {});
+    this.alignSlottedParts();
     this.createRenderer();
     this.renderer!.mount({ root: this.shadowRoot!, host: this });
     this.createVoice();
@@ -231,18 +241,51 @@ export class BambooCicadaElement extends HTMLElementBase {
   }
 
   private applyParts(parts: CicadaParts): void {
-    if (parts.cicada) this.installPart('cicada', parts.cicada);
-    if (parts.pole) this.installPart('pole', parts.pole);
+    if ('cicada' in parts) this.installPart('cicada', parts.cicada);
+    if ('pole' in parts) this.installPart('pole', parts.pole);
   }
 
-  private installPart(slot: 'cicada' | 'pole', source: PartSource): void {
+  private installPart(slot: 'cicada' | 'pole', part: CicadaPart | undefined): void {
+    this.querySelectorAll(`[slot="${slot}"]`).forEach((existing) => existing.remove());
+    if (part == null) return;
+    const definition = this.partDefinition(part);
+    const source = definition.source;
     const element = typeof source === 'function' ? source() : source;
-    this.querySelectorAll(`[slot="${slot}"]`).forEach((existing) => {
-      if (existing !== element) existing.remove();
-    });
     element.setAttribute('slot', slot);
     element.setAttribute('data-bc-managed', 'true');
+    this.alignPart(element, slot, definition.socket);
     this.append(element);
+  }
+
+  private alignSlottedParts(): void {
+    for (const slot of ['cicada', 'pole'] as const) {
+      this.querySelectorAll(`[slot="${slot}"]`).forEach((element) => {
+        const value = element.getAttribute('data-bc-socket');
+        const [x, y] = value ? value.split(',').map(Number) : [];
+        this.alignPart(element, slot, value ? { x, y } : undefined);
+      });
+    }
+  }
+
+  private alignPart(element: Element, slot: 'cicada' | 'pole', requested: Partial<PartSocket> | undefined): void {
+    const fallback = DEFAULT_PART_SOCKETS[slot];
+    const socket = {
+      x: this.socketCoordinate(requested?.x, fallback.x),
+      y: this.socketCoordinate(requested?.y, fallback.y),
+    };
+    element.setAttribute('data-bc-socket', `${socket.x},${socket.y}`);
+    const style = (element as HTMLElement).style;
+    style.setProperty('--bc-part-offset-x', `${-socket.x * 100}%`);
+    style.setProperty('--bc-part-offset-y', `${-socket.y * 100}%`);
+  }
+
+  private partDefinition(part: Exclude<CicadaPart, null>): PartDefinition {
+    if (typeof part === 'object' && 'source' in part) return part;
+    return { source: part as PartSource };
+  }
+
+  private socketCoordinate(value: number | undefined, fallback: number): number {
+    return Number.isFinite(value) ? Math.max(0, Math.min(1, value as number)) : fallback;
   }
 
   private attachInput(): void {
@@ -253,6 +296,7 @@ export class BambooCicadaElement extends HTMLElementBase {
     target.addEventListener('pointerup', this.onPointerUp);
     target.addEventListener('pointercancel', this.onPointerUp);
     target.addEventListener('lostpointercapture', this.onLostPointerCapture);
+    target.addEventListener('click', this.onClick, true);
     target.addEventListener('keydown', this.onKeyDown);
     this.listening = true;
   }
@@ -265,6 +309,7 @@ export class BambooCicadaElement extends HTMLElementBase {
     target.removeEventListener('pointerup', this.onPointerUp);
     target.removeEventListener('pointercancel', this.onPointerUp);
     target.removeEventListener('lostpointercapture', this.onLostPointerCapture);
+    target.removeEventListener('click', this.onClick, true);
     target.removeEventListener('keydown', this.onKeyDown);
     this.listening = false;
   }
@@ -276,7 +321,13 @@ export class BambooCicadaElement extends HTMLElementBase {
     const point = this.pointerPoint(event);
     this.dragStart = point;
     this.anchorAtDragStart = { ...this.physics.anchor };
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    this.target = { ...this.physics.anchor };
+    this.pointerDragged = false;
+    const source = event.composedPath().find((candidate): candidate is HTMLElement => (
+      candidate instanceof HTMLElement && typeof candidate.setPointerCapture === 'function'
+    ));
+    this.pointerCaptureTarget = source ?? event.currentTarget as HTMLElement;
+    this.pointerCaptureTarget.setPointerCapture?.(event.pointerId);
     if (this.options.sound !== false) void this.voice?.unlock?.();
     this.startLoop();
   };
@@ -284,21 +335,39 @@ export class BambooCicadaElement extends HTMLElementBase {
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (event.pointerId !== this.pointerId) return;
     const point = this.pointerPoint(event);
+    if (Math.hypot(point.x - this.dragStart.x, point.y - this.dragStart.y) > 4) this.pointerDragged = true;
     const configuredGain = this.options.inputGain ?? defaults.inputGain;
     const gain = Number.isFinite(configuredGain) ? Math.max(0.1, Math.min(4, configuredGain)) : defaults.inputGain;
+    const previousTarget = { ...this.target };
     this.setAnchor(
-      this.anchorAtDragStart.x + (point.x - this.dragStart.x) * gain,
-      this.anchorAtDragStart.y + (point.y - this.dragStart.y) * gain,
+      this.anchorAtDragStart.x + point.x - this.dragStart.x,
+      this.anchorAtDragStart.y + point.y - this.dragStart.y,
     );
+    const extraDrive = (gain - 1) * MANUAL_DRIVE_IMPULSE;
+    this.physics.body.vx -= (this.target.x - previousTarget.x) * extraDrive;
+    this.physics.body.vy -= (this.target.y - previousTarget.y) * extraDrive;
+    this.physics.anchor.x = this.target.x;
+    this.physics.anchor.y = this.target.y;
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (event.pointerId !== this.pointerId) return;
-    this.clearPointer(event.currentTarget as HTMLElement);
+    if (this.pointerDragged || event.type === 'pointercancel') this.suppressClickUntil = performance.now() + 400;
+    this.clearPointer();
   };
 
   private readonly onLostPointerCapture = (event: PointerEvent): void => {
-    if (event.pointerId === this.pointerId) this.pointerId = null;
+    if (event.pointerId === this.pointerId) {
+      this.pointerId = null;
+      this.pointerCaptureTarget = undefined;
+    }
+  };
+
+  private readonly onClick = (event: MouseEvent): void => {
+    if (performance.now() > this.suppressClickUntil) return;
+    this.suppressClickUntil = 0;
+    event.preventDefault();
+    event.stopImmediatePropagation();
   };
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -307,10 +376,11 @@ export class BambooCicadaElement extends HTMLElementBase {
     if (this.auto) this.stopAuto(); else this.startAuto();
   };
 
-  private clearPointer(target = this.renderer?.interactionTarget ?? this): void {
+  private clearPointer(target = this.pointerCaptureTarget ?? this.renderer?.interactionTarget ?? this): void {
     if (this.pointerId === null) return;
     const pointerId = this.pointerId;
     this.pointerId = null;
+    this.pointerCaptureTarget = undefined;
     try { target.releasePointerCapture?.(pointerId); } catch { /* capture already released */ }
   }
 
@@ -383,9 +453,14 @@ export class BambooCicadaElement extends HTMLElementBase {
       this.target.y = center.y + Math.sin(this.autoPhase) * radius;
     }
 
-    const follow = 1 - Math.exp(-elapsed * (this.auto ? AUTO_FOLLOW_RATE : 25));
-    this.physics.anchor.x += (this.target.x - this.physics.anchor.x) * follow;
-    this.physics.anchor.y += (this.target.y - this.physics.anchor.y) * follow;
+    if (this.pointerId !== null) {
+      this.physics.anchor.x = this.target.x;
+      this.physics.anchor.y = this.target.y;
+    } else {
+      const follow = 1 - Math.exp(-elapsed * (this.auto ? AUTO_FOLLOW_RATE : 25));
+      this.physics.anchor.x += (this.target.x - this.physics.anchor.x) * follow;
+      this.physics.anchor.y += (this.target.y - this.physics.anchor.y) * follow;
+    }
     if (this.auto) this.assistAutoDrive(elapsed);
     stepPhysics(this.physics, elapsed);
     this.constrainBodyToViewport();

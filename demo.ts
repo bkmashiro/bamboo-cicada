@@ -38,6 +38,64 @@ const outputs = {
 let auto = false;
 let sound = true;
 
+const emojiCicada = document.createElement('span');
+emojiCicada.className = 'demo-emoji-part';
+emojiCicada.textContent = '🪲';
+emojiCicada.setAttribute('aria-label', 'Emoji 甲虫皮肤');
+
+const rocketCicada = document.createElement('img');
+rocketCicada.className = 'demo-rocket-part';
+rocketCicada.src = new URL('./skins/cicada-rocket.webp', window.location.href).href;
+rocketCicada.alt = '带红色吊环的竹蝉飞船';
+
+const liveButton = document.createElement('button');
+liveButton.type = 'button';
+liveButton.className = 'demo-live-button';
+liveButton.innerHTML = '<span class="part-socket" aria-hidden="true"></span><span>真按钮 · 0 次</span>';
+let liveButtonClicks = 0;
+liveButton.addEventListener('click', () => {
+  liveButtonClicks += 1;
+  liveButton.querySelector('span:last-child')!.textContent = `真按钮 · ${liveButtonClicks} 次`;
+});
+
+const emojiPole = document.createElement('span');
+emojiPole.className = 'demo-emoji-pole';
+emojiPole.textContent = '🎋';
+emojiPole.setAttribute('aria-label', 'Emoji 竹子木棍');
+
+const rulerPole = document.createElement('div');
+rulerPole.className = 'demo-ruler-part';
+rulerPole.setAttribute('aria-label', 'CSS 刻度尺木棍');
+rulerPole.innerHTML = '<span class="part-socket" aria-hidden="true"></span>';
+
+function syncSkinButtons(selector: string, active: string): void {
+  document.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.cicadaSkin === active || button.dataset.poleSkin === active));
+  });
+}
+
+function setCicadaSkin(skin: string): void {
+  if (skin === 'emoji') toy.configure({ parts: { cicada: { source: emojiCicada, socket: { x: 0.5, y: 0.16 } } } });
+  else if (skin === 'rocket') toy.configure({ parts: { cicada: { source: rocketCicada, socket: { x: 0.5, y: 0.052 } } } });
+  else if (skin === 'button') toy.configure({ parts: { cicada: { source: liveButton, socket: { x: 0.5, y: 0 } } } });
+  else toy.configure({ parts: { cicada: null } });
+  syncSkinButtons('[data-cicada-skin]', skin);
+}
+
+function setPoleSkin(skin: string): void {
+  if (skin === 'emoji') toy.configure({ parts: { pole: { source: emojiPole, socket: { x: 0.5, y: 0.08 } } } });
+  else if (skin === 'ruler') toy.configure({ parts: { pole: { source: rulerPole, socket: { x: 0.5, y: 0 } } } });
+  else toy.configure({ parts: { pole: null } });
+  syncSkinButtons('[data-pole-skin]', skin);
+}
+
+document.querySelectorAll<HTMLButtonElement>('[data-cicada-skin]').forEach((button) => {
+  button.addEventListener('click', () => setCicadaSkin(button.dataset.cicadaSkin ?? 'default'));
+});
+document.querySelectorAll<HTMLButtonElement>('[data-pole-skin]').forEach((button) => {
+  button.addEventListener('click', () => setPoleSkin(button.dataset.poleSkin ?? 'default'));
+});
+
 function number(input: HTMLInputElement): number {
   return Number.parseFloat(input.value);
 }
@@ -113,6 +171,8 @@ resetButton.addEventListener('click', () => {
   controls.tubeDiameter.value = '42';
   applyMaterialControls();
   applyRopeControl();
+  setCicadaSkin('default');
+  setPoleSkin('default');
 });
 
 toy.addEventListener('pointerdown', () => {

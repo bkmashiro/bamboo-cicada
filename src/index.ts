@@ -9,8 +9,11 @@ export { createPhysics, stepPhysics, defaultPhysicsOptions } from './physics';
 export type { BodyPoint, PhysicsOptions, PhysicsState, Point, RopeState } from './physics';
 export type {
   CicadaParts,
+  CicadaPart,
   CicadaRenderer,
   MotionState,
+  PartDefinition,
+  PartSocket,
   PartSource,
   RendererMountContext,
 } from './types';

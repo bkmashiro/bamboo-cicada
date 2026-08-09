@@ -12,9 +12,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function pointerEvent(type: string, pointerId: number): Event {
+function pointerEvent(type: string, pointerId: number, clientX = 0, clientY = 0): Event {
   const event = new Event(type, { bubbles: true, composed: true });
-  Object.defineProperty(event, 'pointerId', { value: pointerId });
+  Object.defineProperties(event, {
+    pointerId: { value: pointerId },
+    clientX: { value: clientX },
+    clientY: { value: clientY },
+  });
   return event;
 }
 
@@ -53,6 +57,72 @@ describe('floating public API', () => {
     expect(toy.contains(cicada)).toBe(true);
     expect(toy.contains(pole)).toBe(true);
     expect(svgToy.contains(svgCicada)).toBe(true);
+  });
+
+  it('aligns arbitrary DOM parts by explicit normalized attachment sockets', () => {
+    const cicada = document.createElement('img');
+    const pole = document.createElement('button');
+    const toy = mountBambooCicada({
+      sound: false,
+      parts: {
+        cicada: { source: cicada, socket: { x: 0.5, y: 0.052 } },
+        pole: { source: pole, socket: { x: 0.25, y: 0.8 } },
+      },
+    });
+
+    expect(cicada.style.getPropertyValue('--bc-part-offset-x')).toBe('-50%');
+    expect(cicada.style.getPropertyValue('--bc-part-offset-y')).toBe('-5.2%');
+    expect(pole.style.getPropertyValue('--bc-part-offset-x')).toBe('-25%');
+    expect(pole.style.getPropertyValue('--bc-part-offset-y')).toBe('-80%');
+    expect(cicada.dataset.bcSocket).toBe('0.5,0.052');
+    expect(toy.contains(pole)).toBe(true);
+  });
+
+  it('restores fallback skins and clamps unsafe socket coordinates', () => {
+    const cicada = document.createElement('span');
+    const toy = mountBambooCicada({
+      sound: false,
+      parts: { cicada: { source: cicada, socket: { x: 4, y: Number.NaN } } },
+    });
+    expect(cicada.style.getPropertyValue('--bc-part-offset-x')).toBe('-100%');
+    expect(cicada.style.getPropertyValue('--bc-part-offset-y')).toBe('-12.5%');
+
+    toy.configure({ parts: { cicada: null, pole: null } });
+    expect(toy.querySelector('[slot="cicada"]')).toBeNull();
+    expect(toy.querySelector('[slot="pole"]')).toBeNull();
+    expect(toy.shadowRoot?.querySelector('.default-cicada')).not.toBeNull();
+    expect(toy.shadowRoot?.querySelector('.default-pole')).not.toBeNull();
+  });
+
+  it('reads attachment sockets from declarative HTML slots', () => {
+    const toy = document.createElement('bamboo-cicada') as BambooCicadaElement;
+    const image = document.createElement('img');
+    image.slot = 'cicada';
+    image.dataset.bcSocket = '0.4,0.08';
+    toy.append(image);
+    document.body.append(toy);
+
+    expect(image.style.getPropertyValue('--bc-part-offset-x')).toBe('-40%');
+    expect(image.style.getPropertyValue('--bc-part-offset-y')).toBe('-8%');
+  });
+
+  it('preserves native clicks on DOM skins but suppresses the click after a drag', () => {
+    const button = document.createElement('button');
+    let clicks = 0;
+    button.addEventListener('click', () => { clicks += 1; });
+    const toy = mountBambooCicada({ sound: false, parts: { cicada: button } });
+
+    button.dispatchEvent(pointerEvent('pointerdown', 31, 500, 300));
+    button.dispatchEvent(pointerEvent('pointerup', 31, 500, 300));
+    button.click();
+    expect(clicks).toBe(1);
+
+    button.dispatchEvent(pointerEvent('pointerdown', 32, 500, 300));
+    button.dispatchEvent(pointerEvent('pointermove', 32, 530, 300));
+    button.dispatchEvent(pointerEvent('pointerup', 32, 530, 300));
+    button.click();
+    expect(clicks).toBe(1);
+    expect(toy.motion.dragging).toBe(false);
   });
 
   it('accepts part factories so every instance gets fresh DOM', () => {
@@ -103,6 +173,21 @@ describe('floating public API', () => {
     document.body.append(toy);
     target.dispatchEvent(pointerEvent('pointerdown', 9));
     expect(toy.motion.dragging).toBe(true);
+  });
+
+  it('keeps the grabbed pole point locked to the pointer through repeated shaking', () => {
+    const toy = mountBambooCicada({ sound: false });
+    const target = toy.shadowRoot!.querySelector<HTMLElement>('.scene')!;
+    const start = toy.motion.anchor;
+    const grab = { x: start.x + 9, y: start.y - 6 };
+    target.dispatchEvent(pointerEvent('pointerdown', 12, grab.x, grab.y));
+
+    const deltas = [-18, 24, -31, 36, -22, 15];
+    for (const deltaX of deltas) {
+      target.dispatchEvent(pointerEvent('pointermove', 12, grab.x + deltaX, grab.y));
+      expect(toy.motion.anchor.x).toBeCloseTo(start.x + deltaX, 6);
+      expect(toy.motion.anchor.y).toBeCloseTo(start.y, 6);
+    }
   });
 
   it('resumes an active automatic loop after reconnect', () => {

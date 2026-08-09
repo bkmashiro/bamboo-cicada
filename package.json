@@ -1,6 +1,6 @@
 {
   "name": "zhuzhiliao",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "A physics-driven bamboo cicada that floats over any web page.",
   "keywords": ["zhuzhiliao", "bamboo-cicada", "web-component", "web-audio", "physical-modeling", "physics", "toy"],
   "author": "Yuzhe Shi",

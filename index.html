@@ -105,6 +105,31 @@
     .panel-actions button { flex: 1; min-height: 41px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); background: rgba(255,255,255,.48); cursor: pointer; font-weight: 700; font-size: 11px; }
     .panel-actions button[aria-pressed='true'] { color: var(--paper); border-color: var(--deep-leaf); background: var(--deep-leaf); }
 
+    .skin-lab { padding: 92px 24px 102px; border-top: 1px solid rgba(23,63,53,.12); background: #e4efdc; }
+    .skin-lab-grid { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(320px,.75fr); gap: 28px; margin-top: 38px; }
+    .skin-board { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 27px; overflow: hidden; background: #fffaf0; box-shadow: var(--shadow); }
+    .skin-group { min-width: 0; padding: 26px; }
+    .skin-group + .skin-group { border-left: 1px dashed var(--line); }
+    .skin-group h3 { margin: 0 0 8px; font: 600 24px/1.1 Georgia, serif; }
+    .skin-group p { margin: 0 0 22px; color: rgba(23,63,53,.64); font-size: 12px; line-height: 1.65; }
+    .skin-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .skin-choice { position: relative; min-height: 68px; padding: 10px 12px; overflow: visible; border: 1px solid rgba(23,63,53,.2); border-radius: 16px; color: var(--ink); background: rgba(228,239,220,.55); cursor: pointer; text-align: left; font: 720 12px/1.25 system-ui,sans-serif; }
+    .skin-choice small { display: block; margin-top: 6px; color: rgba(23,63,53,.52); font: 9px/1.2 ui-monospace,monospace; }
+    .skin-choice[aria-pressed='true'] { color: var(--paper); border-color: var(--deep-leaf); background: var(--deep-leaf); }
+    .skin-choice[aria-pressed='true'] small { color: rgba(248,242,226,.68); }
+    .skin-flight-zone { display: flex; align-items: end; justify-content: flex-end; height: 170px; margin-top: 12px; padding: 0 8px 20px; border-bottom: 1px dashed rgba(23,63,53,.2); color: rgba(23,63,53,.5); font: 10px/1 ui-monospace,monospace; letter-spacing: .04em; }
+    .skin-flight-zone::before { content: '↗'; display: grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; border: 1px dashed rgba(23,63,53,.4); border-radius: 50%; color: var(--orange); }
+    .socket-note { padding: 27px; border: 1px solid var(--line); border-radius: 27px 27px 14px 27px; color: var(--paper); background: var(--deep-leaf); box-shadow: var(--shadow); }
+    .socket-note strong { display: block; margin: 17px 0 13px; font: 600 28px/1.05 Georgia,serif; }
+    .socket-note p { color: rgba(248,242,226,.7); font-size: 13px; line-height: 1.75; }
+    .socket-code { display: block; margin-top: 22px; padding: 16px; overflow-x: auto; border: 1px solid rgba(248,242,226,.2); border-radius: 15px; color: #d9ed9d; background: rgba(3,24,19,.4); font: 10px/1.65 ui-monospace,monospace; white-space: pre; }
+    .demo-emoji-part { display: grid; place-items: center; width: 86px; height: 86px; border: 2px solid #173f35; border-radius: 28px; background: #f2d987; box-shadow: rgba(23,63,53,.2) 0 9px 20px; font-size: 52px; }
+    .demo-rocket-part { display: block; width: 92px; height: auto; filter: drop-shadow(2px 8px 5px rgba(23,40,32,.25)); }
+    .demo-live-button { position: relative; width: 132px; min-height: 54px; padding: 10px 14px; border: 2px solid #173f35; border-radius: 15px; color: #173f35; background: #f2d987; box-shadow: rgba(23,63,53,.24) 3px 5px 0; cursor: pointer; font-weight: 800; }
+    .demo-live-button .part-socket, .demo-ruler-part .part-socket { position: absolute; left: 50%; top: 0; width: 13px; height: 13px; border: 3px solid #a72620; border-radius: 50%; background: #f8f2e2; translate: -50% -50%; }
+    .demo-emoji-pole { display: grid; place-items: start center; width: 64px; height: 145px; font-size: 54px; writing-mode: vertical-rl; }
+    .demo-ruler-part { position: relative; width: 24px; height: 148px; border: 2px solid #76501f; border-radius: 6px; background: repeating-linear-gradient(#f2d987 0 10px,#76501f 10px 11px); box-shadow: rgba(23,40,32,.22) 2px 5px 4px; }
+
     .summer-note { padding: 105px 24px 118px; background: var(--paper); }
     .section-inner { width: min(1240px, 100%); margin: auto; }
     .section-kicker { color: var(--cicada); font: 760 11px/1 ui-monospace, monospace; letter-spacing: .14em; }
@@ -144,6 +169,7 @@
       .hero-inner { grid-template-columns: 1fr; padding-top: 125px; }
       .lab-panel { width: min(100%, 610px); }
       .fit-strip { grid-template-columns: 1fr 1fr; }
+      .skin-lab-grid { grid-template-columns: 1fr; }
       .fit-lead { grid-column: 1 / -1; }
       .fit-lead, .fit-stat { border-bottom: 1px dashed var(--line); }
       .signal-chain { grid-template-columns: 1fr 1fr; }
@@ -162,6 +188,10 @@
       .telemetry { grid-template-columns: 1fr 1fr; }
       .control-row { grid-template-columns: 88px 1fr 58px; }
       .summer-note, .api { padding-inline: 14px; }
+      .skin-lab { padding-inline: 14px; }
+      .skin-board { grid-template-columns: 1fr; }
+      .skin-flight-zone { height: 210px; }
+      .skin-group + .skin-group { border-left: 0; border-top: 1px dashed var(--line); }
       .fit-strip, .signal-chain, .model-note { grid-template-columns: 1fr; }
       .fit-lead { grid-column: auto; }
       .fit-lead, .fit-stat { min-height: 144px; border-right: 0; }
@@ -176,7 +206,7 @@
   <header class="site-header">
     <a class="brand" href="#top"><span class="brand-mark">知了</span>zhuzhiliao</a>
     <nav aria-label="主导航">
-      <a href="#model">声音从哪来</a><a href="./science.html">科学报告</a><a href="#api">接入网页</a>
+      <a href="#skins">换头台</a><a href="#model">声音从哪来</a><a href="./science.html">科学报告</a><a href="#api">接入网页</a>
       <a href="https://github.com/bkmashiro/bamboo-cicada" target="_blank" rel="noreferrer">GitHub ↗</a>
       <a class="nav-cta" href="https://www.npmjs.com/package/zhuzhiliao" target="_blank" rel="noreferrer">npm ↗</a>
     </nav>
@@ -223,9 +253,49 @@
       </div>
     </section>
 
+    <section class="skin-lab interactive-ui" id="skins">
+      <div class="section-inner">
+        <div class="section-kicker">01 / 万物皆可挂</div>
+        <h2 class="section-title">今天知了值班，明天按钮上天。</h2>
+        <div class="skin-flight-zone" aria-hidden="true">这块天空留给换好皮肤的玩具</div>
+        <div class="skin-lab-grid">
+          <div class="skin-board">
+            <article class="skin-group">
+              <h3>换知了</h3><p>皮肤会直接装到正在运动的物理体上，速度和声音不中断。</p>
+              <div class="skin-options" aria-label="知了皮肤">
+                <button class="skin-choice" type="button" data-cicada-skin="default" aria-pressed="true">竹知了<small>内置 DOM</small></button>
+                <button class="skin-choice" type="button" data-cicada-skin="emoji" aria-pressed="false">Emoji 虫<small>socket .50, .16</small></button>
+                <button class="skin-choice" type="button" data-cicada-skin="rocket" aria-pressed="false">竹蝉飞船<small>透明 WebP</small></button>
+                <button class="skin-choice" id="live-part-button" type="button" data-cicada-skin="button" aria-pressed="false">真实按钮<small>点击事件保留</small></button>
+              </div>
+            </article>
+            <article class="skin-group">
+              <h3>换木棍</h3><p>棍子也只是 DOM。红色吊环标出绳子的精确起点。</p>
+              <div class="skin-options" aria-label="木棍皮肤">
+                <button class="skin-choice" type="button" data-pole-skin="default" aria-pressed="true">竹棒<small>内置 DOM</small></button>
+                <button class="skin-choice" type="button" data-pole-skin="emoji" aria-pressed="false">一根🎋<small>Emoji DOM</small></button>
+                <button class="skin-choice" type="button" data-pole-skin="ruler" aria-pressed="false">刻度尺<small>CSS DOM</small></button>
+              </div>
+            </article>
+          </div>
+          <aside class="socket-note">
+            <span class="section-kicker">ATTACHMENT SOCKET</span>
+            <strong>连接点写在皮肤里。</strong>
+            <p><code>x / y</code> 使用 DOM 自身的归一化坐标。renderer 把这个点对齐到 canonical physics endpoint，再围绕它旋转；图片尺寸和长宽比变化时，绳子仍然拴在同一个可见部位。</p>
+            <code class="socket-code">parts: {
+  cicada: {
+    source: image,
+    socket: { x: .50, y: .052 }
+  }
+}</code>
+          </aside>
+        </div>
+      </div>
+    </section>
+
     <section class="summer-note" id="model">
       <div class="section-inner">
-        <div class="section-kicker">01 / 一段录音里的两种时间</div>
+        <div class="section-kicker">02 / 一段录音里的两种时间</div>
         <h2 class="section-title">一圈三十三次摩擦，听见的却是一声悠长的「哇——」。</h2>
         <div class="fit-strip">
           <article class="fit-lead"><strong>从真实声学结构压缩出的实时模型</strong><p>参数描述一次具体录音状态下的有效声学行为，让浏览器用少量节点重建宏观音色。</p></article>
@@ -251,7 +321,7 @@
 
     <section class="api" id="api">
       <div class="section-inner api-grid">
-        <div><div class="eyebrow">02 / 带一只竹知了回去</div><h2>挂进任何网页，夏天就开始了。</h2><p>默认 renderer、绳系物理与拟合声学模型开箱即玩。知了 DOM、竹棒 DOM、声音、renderer 和物理参数都可以独立替换。</p></div>
+        <div><div class="eyebrow">03 / 带一只竹知了回去</div><h2>挂进任何网页，夏天就开始了。</h2><p>默认 renderer、绳系物理与拟合声学模型开箱即玩。知了 DOM、竹棒 DOM、连接 socket、声音、renderer 和物理参数都可以独立替换。</p></div>
         <pre><code>pnpm add zhuzhiliao
 
 import {
@@ -265,9 +335,17 @@ const voice = new SynthCicadaVoice({
   tubeLength: 140,
 });
 
+const button = document.querySelector('#summer-button')!;
+
 mountBambooCicada({
   voice: () =&gt; voice,
   physics: { ropeLength: 132 },
+  parts: {
+    cicada: {
+      source: button,
+      socket: { x: .5, y: 0 },
+    },
+  },
 });</code></pre>
       </div>
     </section>

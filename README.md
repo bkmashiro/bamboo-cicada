@@ -92,8 +92,17 @@ const pole = document.createElement('div');
 pole.className = 'my-pole';
 
 mountBambooCicada({
-  parts: { cicada, pole },
+  parts: {
+    cicada: { source: cicada, socket: { x: 0.5, y: 0.052 } },
+    pole: { source: pole, socket: { x: 0.5, y: 0 } },
+  },
 });
+```
+
+`socket` 是 DOM 内部的归一化连接点：`(0, 0)` 为左上角，`(1, 1)` 为右下角。renderer 会先把 socket 对齐到物理端点，再围绕该点旋转；因此图片尺寸或长宽比变化时，绳端不会漂到透明区域。传入已有 DOM 会移动节点而不是克隆，原有事件监听器仍然保留；运行时传入 `null` 可恢复默认皮肤：
+
+```ts
+toy.configure({ parts: { cicada: null, pole: null } });
 ```
 
 多实例时建议使用 factory，每只玩具都会获得新节点：
@@ -111,8 +120,8 @@ mountBambooCicada({
 
 ```html
 <bamboo-cicada>
-  <img slot="cicada" src="/my-cicada.webp" alt="我的竹知了" />
-  <div slot="pole" class="my-pole"></div>
+  <img slot="cicada" data-bc-socket="0.5,0.052" src="/my-cicada.webp" alt="我的竹知了" />
+  <div slot="pole" data-bc-socket="0.5,0" class="my-pole"></div>
 </bamboo-cicada>
 ```
 
