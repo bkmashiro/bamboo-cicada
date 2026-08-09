@@ -119,6 +119,41 @@ describe('floating public API', () => {
     raf.mockRestore();
   });
 
+  it('drives a forceful sustained automatic circle without repeatedly losing the rope', () => {
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 1;
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      const id = nextFrame++;
+      frames.set(id, callback);
+      return id;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)));
+
+    const toy = mountBambooCicada({ sound: false });
+    toy.startAuto();
+    const samples: MotionState[] = [];
+    let time = performance.now();
+    for (let step = 0; step < 360; step += 1) {
+      const [id, callback] = frames.entries().next().value as [number, FrameRequestCallback];
+      frames.delete(id);
+      time += 1000 / 60;
+      callback(time);
+      if (step >= 120) samples.push(toy.motion);
+    }
+
+    const signedTurns = samples.map((motion) => motion.rope.angularVelocity / (Math.PI * 2));
+    const slackFraction = samples.filter((motion) => motion.rope.distance < motion.rope.length * 0.99).length / samples.length;
+    const anchorX = samples.map((motion) => motion.anchor.x);
+    const anchorExcursion = Math.max(...anchorX) - Math.min(...anchorX);
+    const meanTurns = signedTurns.reduce((sum, turns) => sum + turns, 0) / signedTurns.length;
+
+    expect(anchorExcursion).toBeGreaterThan(100);
+    expect(slackFraction).toBeLessThan(0.2);
+    expect(signedTurns.filter((turns) => turns < 0)).toHaveLength(0);
+    expect(meanTurns).toBeGreaterThan(2);
+    expect(meanTurns).toBeLessThan(2.7);
+  });
+
   it('unlocks injected audio from pointer and keyboard gestures', () => {
     const voice: CicadaVoice = {
       unlock: vi.fn(),

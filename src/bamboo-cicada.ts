@@ -19,7 +19,13 @@ export interface BambooCicadaOptions {
 
 const FALLBACK_WIDTH = 340;
 const FALLBACK_HEIGHT = 430;
-const AUTO_RADIUS = 42;
+const AUTO_RADIUS = 58;
+const AUTO_TURNS_PER_SECOND = 2.367;
+const AUTO_COMPACT_RADIUS = 44;
+const AUTO_COMPACT_TURNS_PER_SECOND = 1.9;
+const AUTO_FOLLOW_RATE = 35;
+const AUTO_KICK_TURNS_PER_SECOND = 1.15;
+const AUTO_ASSIST_RATE = 4;
 const TAU = Math.PI * 2;
 const HTMLElementBase = (globalThis.HTMLElement ?? class {}) as typeof HTMLElement;
 
@@ -107,8 +113,15 @@ export class BambooCicadaElement extends HTMLElementBase {
   }
 
   startAuto(): void {
+    const starting = !this.auto;
     this.auto = true;
     this.clearPointer();
+    if (starting && Math.abs(this.physics.rope.angularVelocity) < TAU * 0.5) {
+      const angle = Number.isFinite(this.physics.rope.angle) ? this.physics.rope.angle : Math.PI / 2;
+      const kickSpeed = this.physics.rope.length * TAU * AUTO_KICK_TURNS_PER_SECOND;
+      this.physics.body.vx += -Math.sin(angle) * kickSpeed;
+      this.physics.body.vy += Math.cos(angle) * kickSpeed;
+    }
     if (this.options.sound !== false) void this.voice?.unlock?.();
     this.startLoop();
   }
@@ -360,15 +373,20 @@ export class BambooCicadaElement extends HTMLElementBase {
     const elapsed = Math.min(0.05, Math.max(0, (time - this.lastFrame) / 1000));
     this.lastFrame = time;
     if (this.auto) {
-      this.autoPhase += 2.75 * TAU * elapsed;
+      const compact = this.viewport.width < 640;
+      const turnsPerSecond = compact ? AUTO_COMPACT_TURNS_PER_SECOND : AUTO_TURNS_PER_SECOND;
+      const radius = compact ? AUTO_COMPACT_RADIUS : AUTO_RADIUS;
+      this.autoPhase += turnsPerSecond * TAU * elapsed;
       const center = this.defaultAnchor();
-      this.target.x = center.x + Math.cos(this.autoPhase) * AUTO_RADIUS;
-      this.target.y = center.y + Math.sin(this.autoPhase) * AUTO_RADIUS;
+      if (compact) center.x = this.viewport.width / 2;
+      this.target.x = center.x + Math.cos(this.autoPhase) * radius;
+      this.target.y = center.y + Math.sin(this.autoPhase) * radius;
     }
 
-    const follow = 1 - Math.exp(-elapsed * 25);
+    const follow = 1 - Math.exp(-elapsed * (this.auto ? AUTO_FOLLOW_RATE : 25));
     this.physics.anchor.x += (this.target.x - this.physics.anchor.x) * follow;
     this.physics.anchor.y += (this.target.y - this.physics.anchor.y) * follow;
+    if (this.auto) this.assistAutoDrive(elapsed);
     stepPhysics(this.physics, elapsed);
     this.constrainBodyToViewport();
     const settled = this.settleIfReady();
@@ -380,6 +398,22 @@ export class BambooCicadaElement extends HTMLElementBase {
       this.voice?.silence();
     }
   };
+
+  private assistAutoDrive(elapsed: number): void {
+    const dx = this.physics.body.x - this.physics.anchor.x;
+    const dy = this.physics.body.y - this.physics.anchor.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const tangentX = -dy / distance;
+    const tangentY = dx / distance;
+    const currentTangential = this.physics.body.vx * tangentX + this.physics.body.vy * tangentY;
+    const compact = this.viewport.width < 640;
+    const turnsPerSecond = compact ? AUTO_COMPACT_TURNS_PER_SECOND : AUTO_TURNS_PER_SECOND;
+    const targetTangential = this.physics.rope.length * TAU * turnsPerSecond;
+    if (currentTangential >= targetTangential) return;
+    const assist = (targetTangential - currentTangential) * (1 - Math.exp(-elapsed * AUTO_ASSIST_RATE));
+    this.physics.body.vx += tangentX * assist;
+    this.physics.body.vy += tangentY * assist;
+  }
 
   private constrainBodyToViewport(): void {
     const body = this.physics.body;
