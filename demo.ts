@@ -77,8 +77,8 @@ liveButton.addEventListener('click', () => {
 
 const emojiPole = document.createElement('span');
 emojiPole.className = 'demo-emoji-pole';
-emojiPole.textContent = '🎋';
 emojiPole.setAttribute('aria-label', 'Emoji 竹子木棍');
+emojiPole.innerHTML = '<span aria-hidden="true">🎋</span><span class="part-socket" aria-hidden="true"></span>';
 
 const rulerPole = document.createElement('div');
 rulerPole.className = 'demo-ruler-part';
@@ -100,7 +100,7 @@ function setCicadaSkin(skin: string): void {
 }
 
 function setPoleSkin(skin: string): void {
-  if (skin === 'emoji') toy.configure({ parts: { pole: { source: emojiPole, socket: { x: 0.5, y: 0.08 } } } });
+  if (skin === 'emoji') toy.configure({ parts: { pole: { source: emojiPole, socket: { x: 0.25, y: 0.08 } } } });
   else if (skin === 'ruler') toy.configure({ parts: { pole: { source: rulerPole, socket: { x: 0.5, y: 0 } } } });
   else toy.configure({ parts: { pole: null } });
   syncSkinButtons('[data-pole-skin]', skin);
