@@ -3,138 +3,180 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#101713" />
-  <title>zhuzhiliao · 可交互的竹知了物理声学模型</title>
-  <meta name="description" content="把竹知了挂到任意网页：全视口绳系物理、粘滑摩擦激励、膜面与竹筒共振，以及可替换的 DOM、声音和渲染器。" />
+  <meta name="theme-color" content="#f4edda" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='22' fill='%230e4e3e'/%3E%3Cpath d='M18 35c7-12 21-12 28 0-7 13-21 13-28 0Zm14-5v18M20 25l12 5 12-5' fill='none' stroke='%23f0c75e' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <title>zhuzhiliao · 把盛夏甩进网页</title>
+  <meta name="description" content="可嵌入任意网页的竹知了：全视口绳系物理、拟合真实声学结构的粘滑激励、耦合膜腔共振与盛夏声景。" />
   <style>
     :root {
-      color: #ede8d7;
-      background: #101713;
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --ink: #101713;
-      --paper: #ede8d7;
-      --moss: #6f8f72;
-      --acid: #d7f56b;
-      --red: #d85b3f;
-      --line: rgba(237,232,215,.16);
+      color: #173f35;
+      background: #f4edda;
+      font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", ui-sans-serif, system-ui, sans-serif;
+      --ink: #173f35;
+      --leaf: #277357;
+      --deep-leaf: #0e4e3e;
+      --mint: #b9dfc9;
+      --sky: #d8eee4;
+      --paper: #f8f2e2;
+      --sun: #f0c75e;
+      --cicada: #e97144;
+      --oat: #d9cfb7;
+      --line: rgba(23, 63, 53, .18);
+      --shadow: rgba(32, 68, 53, .12) 0 1px 2px, rgba(255, 255, 255, .7) 0 -1px 0 inset;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; overflow-x: hidden; background: var(--ink); }
+    body { margin: 0; overflow-x: hidden; background: var(--paper); }
     button, input { font: inherit; }
     a { color: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid rgba(233, 113, 68, .55); outline-offset: 3px; }
     .interactive-ui { position: relative; }
+
     .site-header {
       position: absolute; z-index: 2147483001; inset: 0 0 auto;
       display: flex; align-items: center; justify-content: space-between;
-      width: min(1240px, calc(100% - 40px)); margin: auto; padding: 22px 0;
+      width: min(1240px, calc(100% - 48px)); margin: auto; padding: 22px 0;
       border-bottom: 1px solid var(--line);
     }
-    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 780; letter-spacing: -.03em; }
-    .brand-mark { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 50%; color: var(--ink); background: var(--acid); font: 900 12px/1 ui-monospace, monospace; }
-    nav { display: flex; align-items: center; gap: 24px; color: rgba(237,232,215,.7); font-size: 13px; }
+    .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 720; letter-spacing: -.03em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--ink); border-radius: 50% 44% 50% 45%; color: var(--paper); background: var(--deep-leaf); font: 800 11px/1 ui-monospace, monospace; transform: rotate(-7deg); }
+    nav { display: flex; align-items: center; gap: 24px; color: rgba(23, 63, 53, .7); font-size: 13px; font-weight: 600; }
     nav a { text-decoration: none; }
-    nav a:hover { color: var(--paper); }
-    .nav-cta { padding: 10px 15px; border: 1px solid rgba(215,245,107,.5); border-radius: 99px; color: var(--acid); }
+    nav a:hover { color: var(--cicada); }
+    .nav-cta { padding: 10px 15px; border: 1px solid var(--ink); border-radius: 99px; background: rgba(255,255,255,.28); }
 
     .hero {
       position: relative; min-height: 100svh; overflow: hidden;
       background:
-        radial-gradient(circle at 76% 24%, rgba(215,245,107,.15), transparent 22%),
-        radial-gradient(circle at 18% 80%, rgba(216,91,63,.13), transparent 30%),
-        linear-gradient(145deg, #101713, #18231d 58%, #111a15);
+        radial-gradient(circle at 75% 16%, rgba(240, 199, 94, .72) 0 9%, transparent 9.2%),
+        linear-gradient(152deg, #e4f0dd 0%, #f5efd9 45%, #d8ead9 100%);
     }
-    .hero::before { content: ''; position: absolute; inset: 0; opacity: .16; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to bottom, #000, transparent 88%); }
-    .hero-inner { width: min(1240px, calc(100% - 40px)); min-height: 100svh; margin: auto; padding: 148px 0 72px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .75fr); align-items: center; gap: clamp(50px, 8vw, 120px); }
-    .eyebrow { display: flex; align-items: center; gap: 11px; color: var(--acid); font: 750 11px/1 ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; }
-    .eyebrow::before { content: ''; width: 34px; height: 1px; background: currentColor; }
-    h1 { max-width: 720px; margin: 25px 0 26px; font-size: clamp(65px, 10vw, 144px); line-height: .84; letter-spacing: -.085em; font-weight: 690; }
-    h1 em { display: block; margin: .13em 0 0 .9em; color: transparent; -webkit-text-stroke: 1px rgba(237,232,215,.55); font-size: .58em; line-height: .95; font-style: normal; letter-spacing: -.06em; }
-    .lede { max-width: 580px; margin: 0; color: rgba(237,232,215,.68); font-size: clamp(16px, 1.45vw, 20px); line-height: 1.75; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
-    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 19px; border: 1px solid var(--line); border-radius: 99px; color: var(--paper); background: rgba(255,255,255,.04); text-decoration: none; cursor: pointer; font-weight: 720; font-size: 13px; }
-    .button.primary { color: var(--ink); border-color: var(--acid); background: var(--acid); }
-    .button:hover { transform: translateY(-1px); }
-    .gesture-note { display: flex; align-items: center; gap: 13px; margin-top: 27px; color: rgba(237,232,215,.52); font: 12px/1.5 ui-monospace, monospace; }
-    .gesture-note span { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 50%; color: var(--acid); }
+    .hero::before, .hero::after { content: ''; position: absolute; pointer-events: none; }
+    .hero::before {
+      inset: auto -9vw -18vw 45vw; height: 44vw; border-radius: 50% 50% 0 0;
+      background: #83b89a; transform: rotate(-8deg); opacity: .72;
+    }
+    .hero::after {
+      inset: 0; opacity: .24;
+      background-image: radial-gradient(rgba(23,63,53,.35) .65px, transparent .65px);
+      background-size: 9px 9px; mask-image: linear-gradient(110deg, #000, transparent 63%);
+    }
+    .bamboo-shadow { position: absolute; inset: -40px auto auto -50px; width: 280px; height: 112%; pointer-events: none; opacity: .16; transform: rotate(-8deg); }
+    .bamboo-shadow i { position: absolute; left: 92px; width: 22px; height: 120%; border-radius: 99px; background: var(--deep-leaf); }
+    .bamboo-shadow i:nth-child(2) { left: 172px; top: -60px; width: 16px; }
+    .bamboo-shadow span { position: absolute; width: 122px; height: 42px; border-radius: 100% 0 100% 0; background: var(--deep-leaf); transform-origin: 0 50%; }
+    .bamboo-shadow span:nth-of-type(1) { left: 108px; top: 18%; transform: rotate(-20deg); }
+    .bamboo-shadow span:nth-of-type(2) { left: 86px; top: 35%; transform: scaleX(-1) rotate(-18deg); }
+    .bamboo-shadow span:nth-of-type(3) { left: 181px; top: 54%; transform: rotate(-34deg); }
+    .bamboo-shadow span:nth-of-type(4) { left: 151px; top: 72%; transform: scaleX(-1) rotate(-24deg); }
 
-    .lab-panel { position: relative; padding: 22px; border: 1px solid rgba(237,232,215,.18); border-radius: 24px; background: rgba(7,12,9,.67); box-shadow: 0 28px 90px rgba(0,0,0,.28); backdrop-filter: blur(18px); }
-    .lab-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-    .lab-head strong { font-size: 13px; letter-spacing: .04em; }
-    .status { display: flex; align-items: center; gap: 7px; color: rgba(237,232,215,.56); font: 11px/1 ui-monospace, monospace; }
-    .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 12px var(--acid); }
-    .scope { position: relative; height: 138px; margin: 18px 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #0a100c; }
-    .scope::before { content: ''; position: absolute; inset: 0; opacity: .22; background-image: linear-gradient(rgba(215,245,107,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(215,245,107,.3) 1px, transparent 1px); background-size: 24px 24px; }
+    .hero-inner { position: relative; z-index: 1; width: min(1240px, calc(100% - 48px)); min-height: 100svh; margin: auto; padding: 132px 0 66px; display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(390px, .72fr); align-items: center; gap: clamp(44px, 7vw, 108px); }
+    .eyebrow { display: flex; align-items: center; gap: 10px; color: var(--deep-leaf); font: 750 11px/1 ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .eyebrow::before { content: ''; width: 32px; height: 8px; border-radius: 50%; background: var(--sun); transform: rotate(-8deg); }
+    h1 { max-width: 750px; margin: 26px 0 27px; font: 650 clamp(62px, 8.5vw, 124px)/.9 Georgia, "Songti SC", serif; letter-spacing: -.075em; text-wrap: balance; }
+    h1 em { display: block; margin-left: .48em; color: var(--cicada); font-style: normal; }
+    .lede { max-width: 610px; margin: 0; color: rgba(23, 63, 53, .76); font-size: clamp(16px, 1.42vw, 19px); line-height: 1.82; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 32px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 47px; padding: 0 20px; border: 1px solid var(--ink); border-radius: 99px; color: var(--ink); background: rgba(255,255,255,.35); text-decoration: none; cursor: pointer; font-weight: 700; font-size: 13px; box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .18s ease; }
+    .button.primary { color: var(--paper); background: var(--deep-leaf); }
+    .button:hover { transform: translateY(-2px) rotate(-1deg); box-shadow: rgba(23,63,53,.25) -4px 5px 0; }
+    .gesture-note { display: flex; align-items: center; gap: 12px; margin-top: 25px; color: rgba(23,63,53,.58); font: 12px/1.5 ui-monospace, monospace; }
+    .gesture-note span { display: grid; place-items: center; width: 34px; height: 34px; border: 1px dashed var(--ink); border-radius: 50%; color: var(--cicada); background: rgba(255,255,255,.25); }
+
+    .lab-panel { position: relative; padding: 21px; border: 1px solid rgba(23,63,53,.24); border-radius: 30px 30px 18px 30px; background: rgba(248,242,226,.78); box-shadow: rgba(51,91,70,.16) 0 24px 60px, rgba(255,255,255,.75) 0 1px inset; backdrop-filter: blur(16px); }
+    .lab-panel::before { content: ''; position: absolute; inset: -9px 38px auto auto; width: 64px; height: 21px; background: rgba(240,199,94,.76); transform: rotate(3deg); }
+    .lab-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }
+    .lab-head strong { font: 730 13px/1 ui-monospace, monospace; letter-spacing: .03em; }
+    .status { display: flex; align-items: center; gap: 7px; color: rgba(23,63,53,.62); font: 10px/1 ui-monospace, monospace; }
+    .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--cicada); box-shadow: 0 0 0 4px rgba(233,113,68,.14); }
+    .scope { position: relative; height: 136px; margin: 17px 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #143f35; }
+    .scope::before { content: ''; position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(rgba(185,223,201,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(185,223,201,.55) 1px, transparent 1px); background-size: 24px 24px; }
     #scope { position: relative; display: block; width: 100%; height: 100%; }
-    .telemetry { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
-    .metric { padding: 10px; border-radius: 10px; background: rgba(255,255,255,.045); }
-    .metric small { display: block; color: rgba(237,232,215,.46); font: 9px/1 ui-monospace, monospace; letter-spacing: .08em; }
-    .metric output { display: block; margin-top: 7px; color: var(--acid); font: 700 15px/1 ui-monospace, monospace; }
-    .controls { display: grid; gap: 13px; }
-    .control-row { display: grid; grid-template-columns: 108px 1fr 54px; align-items: center; gap: 10px; }
-    .control-row label { color: rgba(237,232,215,.72); font-size: 11px; }
-    .control-row output { text-align: right; color: var(--paper); font: 11px/1 ui-monospace, monospace; }
-    input[type='range'] { width: 100%; height: 3px; accent-color: var(--acid); cursor: pointer; }
+    .telemetry { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 18px; }
+    .metric { padding: 10px 9px; border: 1px solid rgba(23,63,53,.1); border-radius: 13px; background: rgba(255,255,255,.38); }
+    .metric small { display: block; color: rgba(23,63,53,.52); font: 8px/1 ui-monospace, monospace; letter-spacing: .06em; }
+    .metric output { display: block; margin-top: 7px; color: var(--deep-leaf); font: 750 14px/1 ui-monospace, monospace; }
+    .controls { display: grid; gap: 12px; }
+    .control-row { display: grid; grid-template-columns: 106px 1fr 55px; align-items: center; gap: 9px; }
+    .control-row label { color: rgba(23,63,53,.75); font-size: 11px; }
+    .control-row output { text-align: right; color: var(--ink); font: 10px/1 ui-monospace, monospace; }
+    input[type='range'] { width: 100%; height: 4px; accent-color: var(--cicada); cursor: pointer; }
     .panel-actions { display: flex; gap: 8px; margin-top: 18px; }
-    .panel-actions button { flex: 1; min-height: 40px; border: 1px solid var(--line); border-radius: 10px; color: var(--paper); background: rgba(255,255,255,.05); cursor: pointer; font-weight: 720; font-size: 12px; }
-    .panel-actions button[aria-pressed='true'] { color: var(--ink); border-color: var(--acid); background: var(--acid); }
+    .panel-actions button { flex: 1; min-height: 41px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); background: rgba(255,255,255,.48); cursor: pointer; font-weight: 700; font-size: 11px; }
+    .panel-actions button[aria-pressed='true'] { color: var(--paper); border-color: var(--deep-leaf); background: var(--deep-leaf); }
 
-    .model { position: relative; padding: 110px 20px 126px; color: #203128; background: #eee9d8; }
+    .summer-note { padding: 105px 24px 118px; background: var(--paper); }
     .section-inner { width: min(1240px, 100%); margin: auto; }
-    .section-kicker { color: #9f3e2c; font: 760 11px/1 ui-monospace, monospace; letter-spacing: .16em; }
-    .section-title { max-width: 900px; margin: 20px 0 56px; font: 620 clamp(42px, 7vw, 92px)/.96 Georgia, "Songti SC", serif; letter-spacing: -.055em; }
-    .signal-chain { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid rgba(32,49,40,.2); }
-    .stage { position: relative; min-height: 260px; padding: 24px 20px; border-right: 1px solid rgba(32,49,40,.18); background: rgba(255,255,255,.24); }
-    .stage:last-child { border-right: 0; }
-    .stage::after { content: '→'; position: absolute; z-index: 1; right: -15px; top: 42px; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(32,49,40,.2); border-radius: 50%; background: #eee9d8; }
-    .stage:last-child::after { display: none; }
-    .stage-index { color: #9f3e2c; font: 700 11px/1 ui-monospace, monospace; }
-    .stage h3 { margin: 52px 0 13px; font: 600 22px/1.05 Georgia, serif; }
-    .stage p { margin: 0; color: rgba(32,49,40,.68); font-size: 13px; line-height: 1.65; }
-    .formula { margin-top: 26px; color: #315e49; font: 11px/1.5 ui-monospace, monospace; }
-    .evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 72px; }
-    .evidence article { padding: 30px; border-top: 1px solid rgba(32,49,40,.28); }
-    .evidence h3 { margin: 0 0 12px; font: 600 25px/1.2 Georgia, serif; }
-    .evidence p { color: rgba(32,49,40,.7); line-height: 1.75; }
-    .evidence a { color: #9f3e2c; }
+    .section-kicker { color: var(--cicada); font: 760 11px/1 ui-monospace, monospace; letter-spacing: .14em; }
+    .section-title { max-width: 1020px; margin: 20px 0 56px; font: 620 clamp(40px, 6.6vw, 84px)/1 Georgia, "Songti SC", serif; letter-spacing: -.055em; text-wrap: balance; }
+    .fit-strip { display: grid; grid-template-columns: 1.1fr repeat(4, 1fr); border: 1px solid var(--line); border-radius: 26px; overflow: hidden; background: #fffaf0; box-shadow: var(--shadow); }
+    .fit-lead, .fit-stat { min-height: 178px; padding: 24px; border-right: 1px dashed var(--line); }
+    .fit-stat:last-child { border-right: 0; }
+    .fit-lead { color: var(--paper); background: var(--deep-leaf); }
+    .fit-lead strong { display: block; margin-bottom: 35px; font: 600 23px/1.15 Georgia, serif; }
+    .fit-lead p, .fit-stat p { margin: 0; font-size: 12px; line-height: 1.65; opacity: .72; }
+    .fit-stat small { display: block; color: var(--cicada); font: 10px/1 ui-monospace, monospace; letter-spacing: .08em; }
+    .fit-stat strong { display: block; margin: 30px 0 8px; font: 650 clamp(27px,3vw,39px)/1 Georgia, serif; }
+    .signal-chain { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 24px; }
+    .stage { position: relative; min-height: 282px; padding: 25px 22px; border: 1px solid var(--line); border-radius: 24px; background: #fffaf0; box-shadow: var(--shadow); }
+    .stage:nth-child(2) { background: var(--mint); transform: rotate(-1deg); }
+    .stage:nth-child(3) { background: #f2d987; transform: rotate(.8deg); }
+    .stage:nth-child(4) { color: var(--paper); background: var(--deep-leaf); }
+    .stage-index { color: var(--cicada); font: 750 10px/1 ui-monospace, monospace; }
+    .stage h3 { margin: 58px 0 13px; font: 600 24px/1.05 Georgia, serif; }
+    .stage p { margin: 0; color: currentColor; font-size: 13px; line-height: 1.7; opacity: .72; }
+    .formula { margin-top: 28px; font: 11px/1.5 ui-monospace, monospace; opacity: .72; }
+    .model-note { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 72px; }
+    .model-note article { padding: 30px; border-top: 1px solid var(--line); }
+    .model-note h3 { margin: 0 0 12px; font: 600 25px/1.2 Georgia, serif; }
+    .model-note p { color: rgba(23,63,53,.72); line-height: 1.78; }
+    .model-note a { color: var(--cicada); }
 
-    .api { padding: 110px 20px; background: #19231d; }
-    .api-grid { display: grid; grid-template-columns: .75fr 1.25fr; gap: 70px; align-items: start; }
-    .api h2 { margin: 0; font: 620 clamp(40px, 6vw, 76px)/1 Georgia, serif; letter-spacing: -.045em; }
-    .api p { color: rgba(237,232,215,.62); line-height: 1.75; }
-    pre { margin: 0; padding: 28px; overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: #0d130f; color: #d7f56b; font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    footer { display: flex; justify-content: space-between; gap: 20px; padding: 28px 20px; color: rgba(237,232,215,.52); background: #0d130f; font-size: 12px; }
+    .api { padding: 105px 24px; color: var(--paper); background: var(--deep-leaf); }
+    .api-grid { display: grid; grid-template-columns: .78fr 1.22fr; gap: 68px; align-items: start; }
+    .api .eyebrow { color: var(--sun); }
+    .api h2 { margin: 25px 0 0; font: 620 clamp(40px, 5.5vw, 72px)/1 Georgia, serif; letter-spacing: -.045em; }
+    .api p { color: rgba(248,242,226,.7); line-height: 1.78; }
+    pre { margin: 0; padding: 28px; overflow-x: auto; border: 1px solid rgba(248,242,226,.22); border-radius: 24px; background: #0a352a; color: #d9ed9d; font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: rgba(0,0,0,.18) 0 18px 50px; }
+    footer { display: flex; justify-content: space-between; gap: 20px; padding: 28px 24px; color: rgba(248,242,226,.58); background: #082d24; font-size: 12px; }
 
-    @media (max-width: 940px) {
-      .hero-inner { grid-template-columns: 1fr; padding-top: 130px; }
-      h1 { font-size: clamp(70px, 18vw, 128px); }
-      .lab-panel { width: min(100%, 590px); }
-      .signal-chain { grid-template-columns: 1fr; }
-      .stage { min-height: 190px; border-right: 0; border-bottom: 1px solid rgba(32,49,40,.18); }
-      .stage::after { right: auto; left: 24px; top: auto; bottom: -15px; content: '↓'; }
+    @media (max-width: 960px) {
+      .hero-inner { grid-template-columns: 1fr; padding-top: 125px; }
+      .lab-panel { width: min(100%, 610px); }
+      .fit-strip { grid-template-columns: 1fr 1fr; }
+      .fit-lead { grid-column: 1 / -1; }
+      .fit-lead, .fit-stat { border-bottom: 1px dashed var(--line); }
+      .signal-chain { grid-template-columns: 1fr 1fr; }
       .api-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) {
       .site-header { width: calc(100% - 28px); }
       nav a:not(.nav-cta) { display: none; }
-      .hero-inner { width: calc(100% - 28px); padding: 116px 0 50px; }
-      h1 { font-size: 66px; margin-bottom: 220px; }
+      .hero-inner { width: calc(100% - 28px); padding: 108px 0 46px; }
+      h1 { margin-top: 21px; font-size: clamp(56px, 16.5vw, 76px); }
+      h1 em { margin-left: .18em; }
+      .hero-copy::after { content: ''; display: block; height: 190px; }
       .lede { font-size: 15px; }
-      .lab-panel { padding: 15px; border-radius: 18px; }
+      .hero-actions, .gesture-note { position: relative; z-index: 1; }
+      .lab-panel { padding: 15px; border-radius: 24px 24px 14px 24px; }
       .telemetry { grid-template-columns: 1fr 1fr; }
-      .control-row { grid-template-columns: 92px 1fr 46px; }
-      .model, .api { padding-inline: 14px; }
-      .evidence { grid-template-columns: 1fr; }
+      .control-row { grid-template-columns: 91px 1fr 48px; }
+      .summer-note, .api { padding-inline: 14px; }
+      .fit-strip, .signal-chain, .model-note { grid-template-columns: 1fr; }
+      .fit-lead { grid-column: auto; }
+      .fit-lead, .fit-stat { min-height: 144px; border-right: 0; }
+      .stage { min-height: 240px; }
+      .stage:nth-child(2), .stage:nth-child(3) { transform: none; }
       footer { flex-direction: column; }
     }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .button:hover { transform: none; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .button { transition: none; } .button:hover { transform: none; } }
   </style>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="#top"><span class="brand-mark">ZL</span>zhuzhiliao</a>
+    <a class="brand" href="#top"><span class="brand-mark">知了</span>zhuzhiliao</a>
     <nav aria-label="主导航">
-      <a href="#model">发声模型</a><a href="#api">API</a>
+      <a href="#model">声音从哪来</a><a href="#api">接入网页</a>
       <a href="https://github.com/bkmashiro/bamboo-cicada" target="_blank" rel="noreferrer">GitHub ↗</a>
       <a class="nav-cta" href="https://www.npmjs.com/package/zhuzhiliao" target="_blank" rel="noreferrer">npm ↗</a>
     </nav>
@@ -142,64 +184,73 @@
 
   <main id="top">
     <section class="hero">
+      <div class="bamboo-shadow" aria-hidden="true"><i></i><i></i><span></span><span></span><span></span><span></span></div>
       <div class="hero-inner interactive-ui">
         <div class="hero-copy">
-          <div class="eyebrow">Interactive physical sound model</div>
-          <h1>竹知了<em>会唱歌</em></h1>
-          <p class="lede">一根绳把粘滑摩擦送进纸膜，竹筒把振动放大成“哇——”的共鸣。抓住竹棒或竹蝉，把它甩到页面任何位置，实时听见转速、张力和旋转相位如何改变声音。</p>
+          <div class="eyebrow">盛夏声景 · 实时物理合成</div>
+          <h1>一甩，<em>盛夏有声。</em></h1>
+          <p class="lede">竹棒划过热风，松香与绳子每圈摩擦三十多次。短促脉冲不断敲响纸膜和竹筒，旋转再把它们揉成一声忽近忽远的「哇——」。抓住玩具画圈，听见力、速度与方向怎样塑造蝉声。</p>
           <div class="hero-actions">
-            <button class="button primary" id="hero-play" type="button">开始自动甩动</button>
+            <button class="button primary" id="hero-play" type="button">听一圈盛夏</button>
             <a class="button" href="https://www.npmjs.com/package/zhuzhiliao" target="_blank" rel="noreferrer">pnpm add zhuzhiliao ↗</a>
           </div>
-          <div class="gesture-note"><span>↗</span>按住玩具画圈 · 活动范围覆盖整个视口</div>
+          <div class="gesture-note"><span>↗</span>按住竹棒或竹蝉画圈 · 玩具可以甩到整个视口</div>
         </div>
 
         <aside class="lab-panel" aria-label="实时声学实验台">
-          <div class="lab-head"><strong>ACOUSTIC MODEL / LIVE</strong><span class="status">READY</span></div>
-          <div class="scope"><canvas id="scope" aria-label="合成激励波形"></canvas></div>
+          <div class="lab-head"><strong>一枚盛夏声音标本</strong><span class="status">LIVE MODEL</span></div>
+          <div class="scope"><canvas id="scope" aria-label="不规则粘滑脉冲与旋转包络"></canvas></div>
           <div class="telemetry">
-            <div class="metric"><small>ROTATION</small><output id="rotation">0.00 r/s</output></div>
-            <div class="metric"><small>TENSION</small><output id="tension">0 N*</output></div>
-            <div class="metric"><small>STICK–SLIP</small><output id="pulse">34 Hz</output></div>
-            <div class="metric"><small>AM PHASE</small><output id="phase">0°</output></div>
+            <div class="metric"><small>每秒转数</small><output id="rotation">0.00 r/s</output></div>
+            <div class="metric"><small>相对张力</small><output id="tension">0 rel</output></div>
+            <div class="metric"><small>摩擦事件</small><output id="pulse">24 Hz</output></div>
+            <div class="metric"><small>旋转方向</small><output id="phase">0°</output></div>
           </div>
           <div class="controls">
             <div class="control-row"><label for="friction">松香摩擦</label><input id="friction" type="range" min="0.2" max="2.5" value="1" step="0.05"><output data-for="friction">1.00×</output></div>
-            <div class="control-row"><label for="membrane">膜面张力</label><input id="membrane" type="range" min="0.4" max="2.2" value="1" step="0.05"><output data-for="membrane">1.00×</output></div>
+            <div class="control-row"><label for="membrane">纸膜张力</label><input id="membrane" type="range" min="0.4" max="2.2" value="1" step="0.05"><output data-for="membrane">1.00×</output></div>
             <div class="control-row"><label for="rope">绳长</label><input id="rope" type="range" min="70" max="220" value="116" step="1"><output data-for="rope">116 mm</output></div>
             <div class="control-row"><label for="tube-length">竹筒长度</label><input id="tube-length" type="range" min="60" max="240" value="120" step="2"><output data-for="tube-length">120 mm</output></div>
             <div class="control-row"><label for="tube-diameter">竹筒直径</label><input id="tube-diameter" type="range" min="20" max="80" value="42" step="1"><output data-for="tube-diameter">42 mm</output></div>
           </div>
           <div class="panel-actions">
-            <button id="auto" type="button" aria-pressed="false">自动甩</button>
+            <button id="auto" type="button" aria-pressed="false">自动甩动</button>
             <button id="sound" type="button" aria-pressed="false">启用声音</button>
-            <button id="reset" type="button">恢复参数</button>
+            <button id="reset" type="button">恢复竹蝉</button>
           </div>
         </aside>
       </div>
     </section>
 
-    <section class="model" id="model">
+    <section class="summer-note" id="model">
       <div class="section-inner">
-        <div class="section-kicker">01 / SOURCE–FILTER SYNTHESIS</div>
-        <h2 class="section-title">从手腕转动，到竹筒里的空气开始共鸣。</h2>
-        <div class="signal-chain">
-          <article class="stage"><span class="stage-index">01</span><h3>旋转与张力</h3><p>角速度产生周期运动，绳长与离心状态共同改变接触压力。</p><div class="formula">T ∝ mω²r</div></article>
-          <article class="stage"><span class="stage-index">02</span><h3>粘滑摩擦</h3><p>涂松香的接触点经历粘住、蓄力、滑动与复位，形成尖锐脉冲和摩擦宽带。</p><div class="formula">stick → load → slip → reset</div></article>
-          <article class="stage"><span class="stage-index">03</span><h3>绳上传递</h3><p>张力脉冲沿绳到达膜面中心。实时模型保留关键激励与张紧状态。</p><div class="formula">F(t) → string tension</div></article>
-          <article class="stage"><span class="stage-index">04</span><h3>膜面模态</h3><p>张紧纸膜像小鼓膜一样响应。张力提高时，共振模态整体上移。</p><div class="formula">f ∝ √(T / σ)</div></article>
-          <article class="stage"><span class="stage-index">05</span><h3>竹筒共鸣</h3><p>竹筒腔体形成强烈 formant，旋转指向性再加入周期 AM，成为标志性的“哇——”。</p><div class="formula">modes → cavity → radiation</div></article>
+        <div class="section-kicker">01 / 一段录音里的两种时间</div>
+        <h2 class="section-title">一圈三十三次摩擦，听见的却是一声悠长的「哇——」。</h2>
+        <div class="fit-strip">
+          <article class="fit-lead"><strong>从真实声学结构压缩出的实时模型</strong><p>参数描述一次具体录音状态下的有效声学行为，让浏览器用少量节点重建宏观音色。</p></article>
+          <article class="fit-stat"><small>ROTATION</small><strong>2.367 Hz</strong><p>约 0.423 秒转一圈，控制盛夏里忽近忽远的慢包络。</p></article>
+          <article class="fit-stat"><small>STICK–SLIP</small><strong>≈ 78 Hz</strong><p>每 12.9 ms 左右一次主要摩擦事件，间隔 CV 约 0.25。</p></article>
+          <article class="fit-stat"><small>MODE I</small><strong>1485 Hz</strong><p>最强有效模态，Q ≈ 11.3，短促地被脉冲反复敲响。</p></article>
+          <article class="fit-stat"><small>MODE II</small><strong>1891 Hz</strong><p>第二主模态，Q ≈ 10，相对幅度约 0.80。</p></article>
         </div>
-        <div class="evidence">
-          <article><h3>实时模型的取舍</h3><p>默认合成器使用粘滑脉冲列、确定性摩擦噪声、四组膜面/腔体共振模态和旋转相位 AM。几十个 Web Audio 节点即可实时运行，并让材料参数保持连续可交互。</p></article>
-          <article><h3>物理依据</h3><p>竹蝉结构与“绳—松香摩擦 → 膜振动 → 筒内空气共鸣”参考<a href="https://tpsci.phy.ntnu.edu.tw/exhibits/531" target="_blank" rel="noreferrer">台北科学日实验说明</a>；粘滑激励参考弓弦接触研究中的<a href="https://pubs.aip.org/asa/poma/article/49/1/035018/2884894/Describing-minimum-bow-force-using-Impulse-Pattern" target="_blank" rel="noreferrer">非线性摩擦与脉冲模式</a>。</p></article>
+
+        <div class="signal-chain">
+          <article class="stage"><span class="stage-index">01 · 手腕与绳</span><h3>一圈，三十多次摩擦</h3><p>旋转建立张力。涂松香的接触点连续经历粘住、蓄力、滑开与复位。</p><div class="formula">78 / 2.367 ≈ 33 events / turn</div></article>
+          <article class="stage"><span class="stage-index">02 · 不规则激励</span><h3>每次都略有不同</h3><p>脉冲间隔带着约 25% 抖动，摩擦宽带填入细小毛刺，让声音保持自然活性。</p><div class="formula">renewal impulses · CV ≈ 0.25</div></article>
+          <article class="stage"><span class="stage-index">03 · 膜腔耦合</span><h3>纸膜与竹筒一起响</h3><p>1485 与 1891 Hz 两个强模态之间加入宽耦合通道，并随张力轻微漂移，形成连续共振平台。</p><div class="formula">membrane ⇄ cavity · Q ≈ 10</div></article>
+          <article class="stage"><span class="stage-index">04 · 盛夏的远近</span><h3>转一圈，声音呼吸一次</h3><p>一次与二次旋转调制叠加，模拟张力、耦合和辐射方向共同造成的「哇——」起伏。</p><div class="formula">AM₁ = .66 · AM₂ = .35</div></article>
+        </div>
+
+        <div class="model-note">
+          <article><h3>为什么听起来更像真的</h3><p>共振衰减只有几毫秒，声音靠每秒约 78 次摩擦持续重燃。它更像不断被擦响的短寿命共振器，而非敲一下延续很久的钟。弱的 3.87 / 4.54 / 5.94 kHz 模态补上竹、纸与辐射产生的亮边。</p></article>
+          <article><h3>从玩具原理到浏览器</h3><p>结构链路来自竹蝉实验说明中的「松香摩擦 → 绳振动 → 薄膜 → 筒内空气共鸣」。查看<a href="https://tpsci.phy.ntnu.edu.tw/exhibits/531" target="_blank" rel="noreferrer">台北科学日竹蝉说明</a>与<a href="https://class.tn.edu.tw/modules/tad_web/index.php?WebID=12251" target="_blank" rel="noreferrer">学校竹蝉制作资料</a>。默认声音全程程序化生成。</p></article>
         </div>
       </div>
     </section>
 
     <section class="api" id="api">
       <div class="section-inner api-grid">
-        <div><div class="eyebrow">02 / EMBED ANYWHERE</div><h2>一行挂载，完整开放。</h2><p>默认 renderer、物理与声音直接可玩。知了 DOM、竹棒 DOM、声学模型、renderer 和物理参数都提供独立接口。</p></div>
+        <div><div class="eyebrow">02 / 带一只竹知了回去</div><h2>挂进任何网页，夏天就开始了。</h2><p>默认 renderer、绳系物理与拟合声学模型开箱即玩。知了 DOM、竹棒 DOM、声音、renderer 和物理参数都可以独立替换。</p></div>
         <pre><code>pnpm add zhuzhiliao
 
 import {

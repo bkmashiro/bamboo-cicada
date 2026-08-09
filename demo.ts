@@ -1,4 +1,5 @@
 import {
+  defaultCicadaFit,
   mapVoiceParameters,
   mountBambooCicada,
   SynthCicadaVoice,
@@ -62,8 +63,8 @@ function applyRopeControl(): void {
 
 function syncAutoButtons(): void {
   autoButton.setAttribute('aria-pressed', String(auto));
-  autoButton.textContent = auto ? '停止甩动' : '自动甩';
-  heroPlay.textContent = auto ? '停止自动甩动' : '开始自动甩动';
+  autoButton.textContent = auto ? '停下竹蝉' : '自动甩动';
+  heroPlay.textContent = auto ? '让竹蝉停下' : '听一圈盛夏';
 }
 
 function syncSoundButton(): void {
@@ -137,16 +138,33 @@ function drawScope(time: number, pulseRate: number, activity: number): void {
   resizeScope();
   const { width, height } = canvas;
   context.clearRect(0, 0, width, height);
-  context.strokeStyle = `rgba(215, 245, 107, ${0.35 + activity * 0.65})`;
+  const rotationEnvelope = 0.56
+    + defaultCicadaFit.primaryAmDepth * 0.24 * Math.cos(time * Math.PI * 2 * defaultCicadaFit.rotationRate)
+    + defaultCicadaFit.secondaryAmDepth * 0.16 * Math.cos(time * Math.PI * 4 * defaultCicadaFit.rotationRate + 0.55);
+  context.strokeStyle = `rgba(185, 223, 201, ${0.42 + activity * 0.58})`;
   context.lineWidth = Math.max(1.5, width / 420);
   context.beginPath();
-  const cycles = Math.max(2, pulseRate / 16);
+  const cycles = Math.max(4, pulseRate / 7);
   for (let x = 0; x < width; x += 1) {
-    const phase = x / width * Math.PI * 2 * cycles + time * pulseRate * 0.035;
-    const stickSlip = Math.tanh(Math.sin(phase) * 5);
-    const membrane = Math.sin(phase * 2.03) * 0.2 + Math.sin(phase * 3.14) * 0.1;
-    const envelope = 0.35 + activity * 0.65;
-    const y = height * 0.5 - (stickSlip * 0.42 + membrane) * height * 0.36 * envelope;
+    const eventPosition = x / width * cycles + time * pulseRate * 0.06;
+    const eventIndex = Math.floor(eventPosition);
+    const jitter = Math.sin(eventIndex * 12.9898) * defaultCicadaFit.slipIntervalCv * 0.38;
+    const local = ((eventPosition + jitter) % 1 + 1) % 1;
+    const impulse = Math.exp(-local * 17);
+    const ring = Math.sin(local * Math.PI * 16.5) * Math.exp(-local * 8.5);
+    const friction = Math.sin((x + eventIndex * 17) * 0.71) * 0.045;
+    const envelope = (0.2 + activity * 0.8) * Math.max(0.22, rotationEnvelope);
+    const y = height * 0.52 - (impulse * 0.7 + ring * 0.42 + friction) * height * 0.48 * envelope;
+    if (x === 0) context.moveTo(x, y); else context.lineTo(x, y);
+  }
+  context.stroke();
+
+  context.strokeStyle = 'rgba(240, 199, 94, .72)';
+  context.lineWidth = Math.max(1, width / 700);
+  context.beginPath();
+  for (let x = 0; x < width; x += 1) {
+    const phase = x / width * Math.PI * 4 + time * Math.PI * 2 * defaultCicadaFit.rotationRate;
+    const y = height * (0.83 - Math.cos(phase) * 0.055 - Math.cos(phase * 2 + 0.55) * 0.026);
     if (x === 0) context.moveTo(x, y); else context.lineTo(x, y);
   }
   context.stroke();
