@@ -51,7 +51,7 @@ function applyMaterialControls(): void {
   });
   outputs.friction.value = `${number(controls.friction).toFixed(2)}×`;
   outputs.membrane.value = `${number(controls.membrane).toFixed(2)}×`;
-  outputs.tubeLength.value = `${number(controls.tubeLength).toFixed(0)} mm`;
+  outputs.tubeLength.value = `${number(controls.tubeLength).toFixed(2)} mm`;
   outputs.tubeDiameter.value = `${number(controls.tubeDiameter).toFixed(0)} mm`;
 }
 
@@ -109,7 +109,7 @@ resetButton.addEventListener('click', () => {
   controls.friction.value = '1';
   controls.membrane.value = '1';
   controls.rope.value = '116';
-  controls.tubeLength.value = '120';
+  controls.tubeLength.value = String(defaultCicadaFit.hollowTube.lengthMeters * 1000);
   controls.tubeDiameter.value = '42';
   applyMaterialControls();
   applyRopeControl();

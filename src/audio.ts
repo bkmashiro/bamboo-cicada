@@ -17,16 +17,30 @@ export interface CicadaFit {
   readonly secondaryAmDepth: number;
   readonly eventsPerRotation: number;
   readonly modes: readonly FittedResonanceMode[];
+  readonly radiationHighpass: number;
+  readonly hollowTube: Readonly<HollowTubeFit>;
+}
+
+export interface HollowTubeFit {
+  readonly lengthMeters: number;
+  readonly reflection: number;
+  readonly loss: number;
+  readonly coupling: number;
+  readonly mouthRadiationHighpass: number;
 }
 
 const fittedModes = Object.freeze([
-  Object.freeze({ frequency: 1485, q: 11.3, gain: 1, family: 'membrane' as const }),
-  Object.freeze({ frequency: 1891, q: 10, gain: 0.8, family: 'cavity' as const }),
-  Object.freeze({ frequency: 1680, q: 2.8, gain: 0.65, family: 'coupling' as const }),
-  Object.freeze({ frequency: 3870, q: 7, gain: 0.07, family: 'radiation' as const }),
-  Object.freeze({ frequency: 4540, q: 6, gain: 0.055, family: 'radiation' as const }),
-  Object.freeze({ frequency: 5940, q: 5, gain: 0.04, family: 'radiation' as const }),
+  Object.freeze({ frequency: 1506.37, q: 10.49, gain: 1, family: 'membrane' as const }),
+  Object.freeze({ frequency: 1760.85, q: 10.62, gain: 0.54, family: 'membrane' as const }),
 ]);
+
+const fittedHollowTube = Object.freeze({
+  lengthMeters: 0.10886,
+  reflection: 0.40,
+  loss: 1.50,
+  coupling: 0.45,
+  mouthRadiationHighpass: 429.96,
+});
 
 /** Effective parameters fitted from one 1.72 s real-world operating condition. */
 export const defaultCicadaFit: Readonly<CicadaFit> = Object.freeze({
@@ -37,6 +51,8 @@ export const defaultCicadaFit: Readonly<CicadaFit> = Object.freeze({
   secondaryAmDepth: 0.35,
   eventsPerRotation: 32.953105196451205,
   modes: fittedModes,
+  radiationHighpass: 1863.85,
+  hollowTube: fittedHollowTube,
 });
 
 export interface VoiceParameters {
@@ -82,14 +98,19 @@ export interface CicadaAcoustics {
 export const defaultCicadaAcoustics: Readonly<CicadaAcoustics> = Object.freeze({
   friction: 1,
   membraneTension: 1,
-  tubeLength: 120,
+  tubeLength: defaultCicadaFit.hollowTube.lengthMeters * 1000,
   tubeDiameter: 42,
 });
 
 const TAU = Math.PI * 2;
+const SPEED_OF_SOUND = 343;
+const TUBE_LOSS_STAGES = 3;
 const EXCITATION_SECONDS = 4;
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 const finite = (value: number | undefined, fallback = 0): number => Number.isFinite(value) ? value as number : fallback;
+const tubeLossStageCutoff = (loss: number): number => (
+  4000 / Math.sqrt(Math.exp((2 * loss) / TUBE_LOSS_STAGES) - 1)
+);
 
 function randomUnit(state: { value: number }): number {
   state.value = (state.value + 0x6d2b79f5) | 0;
@@ -171,7 +192,12 @@ export class SynthCicadaVoice implements CicadaVoice {
   private pulseGain?: GainNode;
   private noiseGain?: GainNode;
   private output?: GainNode;
-  private radiation?: BiquadFilterNode;
+  private outputRolloff?: BiquadFilterNode;
+  private membraneRadiation?: BiquadFilterNode;
+  private tubeMouthRadiation?: BiquadFilterNode;
+  private tubeFeedbackLosses: BiquadFilterNode[] = [];
+  private oneWayDelay?: DelayNode;
+  private roundTripDelay?: DelayNode;
   private modeFilters: BiquadFilterNode[] = [];
 
   constructor(options: Partial<CicadaAcoustics> = {}) {
@@ -213,37 +239,48 @@ export class SynthCicadaVoice implements CicadaVoice {
   }
 
   update(state: Readonly<MotionState>): void {
-    if (!this.context || !this.pulse || !this.pulseGain || !this.noiseGain || !this.output || !this.radiation) return;
+    if (
+      !this.context || !this.pulse || !this.pulseGain || !this.noiseGain || !this.output
+      || !this.outputRolloff || !this.membraneRadiation || !this.tubeMouthRadiation
+      || this.tubeFeedbackLosses.length !== TUBE_LOSS_STAGES || !this.oneWayDelay || !this.roundTripDelay
+    ) return;
 
     const values = mapVoiceParameters(state);
     const now = this.context.currentTime;
     const frictionScale = Math.sqrt(this.settings.friction);
     const membraneScale = values.resonanceScale * Math.sqrt(this.settings.membraneTension);
-    const cavityScale = (defaultCicadaAcoustics.tubeLength / this.settings.tubeLength)
-      * Math.sqrt(defaultCicadaAcoustics.tubeDiameter / this.settings.tubeDiameter);
+    const diameterScale = Math.sqrt(defaultCicadaAcoustics.tubeDiameter / this.settings.tubeDiameter);
     const angle = finite(state.rope.angle);
     const phaseDrift = Math.sin(angle);
+    const oneWaySeconds = this.settings.tubeLength / 1000 / SPEED_OF_SOUND;
 
     this.pulse.playbackRate.setTargetAtTime(values.frequency / defaultCicadaFit.slipRate * frictionScale, now, 0.025);
     this.pulse.detune.setTargetAtTime(values.detune, now, 0.035);
     this.pulseGain.gain.setTargetAtTime(0.82 + values.modulation * 0.18, now, 0.02);
     this.noiseGain.gain.setTargetAtTime(values.noiseGain * this.settings.friction, now, 0.02);
-    this.radiation.frequency.setTargetAtTime(
+    this.outputRolloff.frequency.setTargetAtTime(
       values.filterFrequency * Math.sqrt(this.settings.tubeDiameter / defaultCicadaAcoustics.tubeDiameter),
       now,
       0.04,
     );
+    this.membraneRadiation.frequency.setTargetAtTime(defaultCicadaFit.radiationHighpass, now, 0.04);
+    this.tubeMouthRadiation.frequency.setTargetAtTime(
+      defaultCicadaFit.hollowTube.mouthRadiationHighpass * diameterScale,
+      now,
+      0.04,
+    );
+    this.tubeFeedbackLosses.forEach((filter) => {
+      filter.frequency.setTargetAtTime(tubeLossStageCutoff(defaultCicadaFit.hollowTube.loss), now, 0.04);
+    });
+    this.oneWayDelay.delayTime.setTargetAtTime(oneWaySeconds, now, 0.04);
+    this.roundTripDelay.delayTime.setTargetAtTime(oneWaySeconds * 2, now, 0.04);
     this.output.gain.setTargetAtTime(values.gain * clamp(0.72 + this.settings.friction * 0.28, 0.6, 1.35), now, 0.018);
 
     this.modeFilters.forEach((filter, index) => {
       const mode = fittedModes[index];
       if (!mode) return;
-      let scale = 1;
-      if (mode.family === 'membrane') scale = membraneScale * (1 + phaseDrift * 0.012);
-      if (mode.family === 'cavity') scale = cavityScale * (1 - phaseDrift * 0.01);
-      if (mode.family === 'coupling') scale = Math.sqrt(membraneScale * cavityScale) * (1 + Math.cos(angle * 2) * 0.006);
-      if (mode.family === 'radiation') scale = Math.sqrt(cavityScale);
-      filter.frequency.setTargetAtTime(mode.frequency * scale, now, 0.045);
+      const drift = index % 2 === 0 ? phaseDrift * 0.012 : -phaseDrift * 0.01;
+      filter.frequency.setTargetAtTime(mode.frequency * membraneScale * (1 + drift), now, 0.045);
     });
   }
 
@@ -263,7 +300,12 @@ export class SynthCicadaVoice implements CicadaVoice {
     this.pulseGain = undefined;
     this.noiseGain = undefined;
     this.output = undefined;
-    this.radiation = undefined;
+    this.outputRolloff = undefined;
+    this.membraneRadiation = undefined;
+    this.tubeMouthRadiation = undefined;
+    this.tubeFeedbackLosses = [];
+    this.oneWayDelay = undefined;
+    this.roundTripDelay = undefined;
     this.modeFilters = [];
   }
 
@@ -274,7 +316,20 @@ export class SynthCicadaVoice implements CicadaVoice {
     const pulseGain = context.createGain();
     const noiseGain = context.createGain();
     const exciter = context.createGain();
-    const radiation = context.createBiquadFilter();
+    const membraneMix = context.createGain();
+    const membraneRadiation = context.createBiquadFilter();
+    const tubeInputGain = context.createGain();
+    const oneWayDelay = context.createDelay(1);
+    const tubeJunction = context.createGain();
+    const tubeFeedbackLosses = Array.from(
+      { length: TUBE_LOSS_STAGES },
+      () => context.createBiquadFilter(),
+    );
+    const roundTripDelay = context.createDelay(1);
+    const tubeReflection = context.createGain();
+    const tubeMouthRadiation = context.createBiquadFilter();
+    const tubeCoupling = context.createGain();
+    const outputRolloff = context.createBiquadFilter();
     const output = context.createGain();
 
     const pulseBuffer = context.createBuffer(1, Math.max(1, Math.floor(context.sampleRate * EXCITATION_SECONDS)), context.sampleRate);
@@ -302,9 +357,27 @@ export class SynthCicadaVoice implements CicadaVoice {
     noise.loop = true;
     noiseGain.gain.value = 0;
 
-    radiation.type = 'lowpass';
-    radiation.frequency.value = 6800;
-    radiation.Q.value = 0.62;
+    const oneWaySeconds = this.settings.tubeLength / 1000 / SPEED_OF_SOUND;
+    membraneRadiation.type = 'highpass';
+    membraneRadiation.frequency.value = defaultCicadaFit.radiationHighpass;
+    membraneRadiation.Q.value = 0.707;
+    tubeInputGain.gain.value = 1 - defaultCicadaFit.hollowTube.reflection;
+    oneWayDelay.delayTime.value = oneWaySeconds;
+    tubeFeedbackLosses.forEach((filter) => {
+      filter.type = 'lowpass';
+      filter.frequency.value = tubeLossStageCutoff(defaultCicadaFit.hollowTube.loss);
+      filter.Q.value = 0.5;
+    });
+    roundTripDelay.delayTime.value = oneWaySeconds * 2;
+    tubeReflection.gain.value = defaultCicadaFit.hollowTube.reflection;
+    tubeMouthRadiation.type = 'highpass';
+    tubeMouthRadiation.frequency.value = defaultCicadaFit.hollowTube.mouthRadiationHighpass;
+    tubeMouthRadiation.Q.value = 0.707;
+    // The fitted phase is π: mouth radiation subtracts from the direct membrane path.
+    tubeCoupling.gain.value = -defaultCicadaFit.hollowTube.coupling;
+    outputRolloff.type = 'lowpass';
+    outputRolloff.frequency.value = 6800;
+    outputRolloff.Q.value = 0.62;
     output.gain.value = 0;
 
     pulse.connect(pulseGain).connect(exciter);
@@ -317,11 +390,19 @@ export class SynthCicadaVoice implements CicadaVoice {
       filter.frequency.value = mode.frequency;
       filter.Q.value = mode.q;
       modeGain.gain.value = mode.gain;
-      exciter.connect(filter).connect(modeGain).connect(radiation);
+      exciter.connect(filter).connect(modeGain).connect(membraneMix);
       return filter;
     });
 
-    radiation.connect(output).connect(context.destination);
+    // Direct radiated membrane pressure.
+    membraneMix.connect(membraneRadiation).connect(outputRolloff);
+    // Weak lossy bamboo path: one-way travel to the mouth, then repeated round trips.
+    membraneRadiation.connect(tubeInputGain).connect(oneWayDelay).connect(tubeJunction);
+    let feedbackPath: AudioNode = tubeJunction;
+    tubeFeedbackLosses.forEach((filter) => { feedbackPath = feedbackPath.connect(filter); });
+    feedbackPath.connect(roundTripDelay).connect(tubeReflection).connect(tubeJunction);
+    tubeJunction.connect(tubeMouthRadiation).connect(tubeCoupling).connect(outputRolloff);
+    outputRolloff.connect(output).connect(context.destination);
     pulse.start();
     noise.start();
 
@@ -331,7 +412,12 @@ export class SynthCicadaVoice implements CicadaVoice {
     this.pulseGain = pulseGain;
     this.noiseGain = noiseGain;
     this.output = output;
-    this.radiation = radiation;
+    this.outputRolloff = outputRolloff;
+    this.membraneRadiation = membraneRadiation;
+    this.tubeMouthRadiation = tubeMouthRadiation;
+    this.tubeFeedbackLosses = tubeFeedbackLosses;
+    this.oneWayDelay = oneWayDelay;
+    this.roundTripDelay = roundTripDelay;
     this.modeFilters = modeFilters;
   }
 }

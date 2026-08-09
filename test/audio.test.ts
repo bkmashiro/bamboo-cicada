@@ -33,6 +33,7 @@ const audioNode = () => ({
   playbackRate: audioParam(),
   detune: audioParam(),
   gain: audioParam(),
+  delayTime: audioParam(),
   Q: audioParam(),
   type: '',
   connect(target: unknown) { return target; },
@@ -42,6 +43,9 @@ const audioNode = () => ({
 
 class FakeWebkitAudioContext {
   static constructions = 0;
+  static filters: ReturnType<typeof audioNode>[] = [];
+  static delays: ReturnType<typeof audioNode>[] = [];
+  static gains: ReturnType<typeof audioNode>[] = [];
   state: AudioContextState = 'suspended';
   currentTime = 0;
   sampleRate = 48_000;
@@ -49,8 +53,9 @@ class FakeWebkitAudioContext {
   constructor() { FakeWebkitAudioContext.constructions += 1; }
   createOscillator() { return audioNode(); }
   createBufferSource() { return { ...audioNode(), buffer: null, loop: false }; }
-  createGain() { return audioNode(); }
-  createBiquadFilter() { return audioNode(); }
+  createGain() { const node = audioNode(); FakeWebkitAudioContext.gains.push(node); return node; }
+  createBiquadFilter() { const node = audioNode(); FakeWebkitAudioContext.filters.push(node); return node; }
+  createDelay() { const node = audioNode(); FakeWebkitAudioContext.delays.push(node); return node; }
   createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
   async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; }
@@ -59,10 +64,13 @@ class FakeWebkitAudioContext {
 afterEach(() => {
   delete (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext;
   FakeWebkitAudioContext.constructions = 0;
+  FakeWebkitAudioContext.filters = [];
+  FakeWebkitAudioContext.delays = [];
+  FakeWebkitAudioContext.gains = [];
 });
 
 describe('source-filter voice model', () => {
-  it('uses the fitted rotation, stick-slip, AM, and resonator parameters', () => {
+  it('uses the fitted rotation, stick-slip, membrane, radiation, and hollow-tube parameters', () => {
     expect(defaultCicadaFit).toMatchObject({
       rotationRate: 2.367,
       slipRate: 78,
@@ -71,15 +79,39 @@ describe('source-filter voice model', () => {
       secondaryAmDepth: 0.35,
     });
     expect(defaultCicadaFit.modes).toEqual([
-      { frequency: 1485, q: 11.3, gain: 1, family: 'membrane' },
-      { frequency: 1891, q: 10, gain: 0.8, family: 'cavity' },
-      { frequency: 1680, q: 2.8, gain: 0.65, family: 'coupling' },
-      { frequency: 3870, q: 7, gain: 0.07, family: 'radiation' },
-      { frequency: 4540, q: 6, gain: 0.055, family: 'radiation' },
-      { frequency: 5940, q: 5, gain: 0.04, family: 'radiation' },
+      { frequency: 1506.37, q: 10.49, gain: 1, family: 'membrane' },
+      { frequency: 1760.85, q: 10.62, gain: 0.54, family: 'membrane' },
     ]);
+    expect(defaultCicadaFit.radiationHighpass).toBe(1863.85);
+    expect(defaultCicadaFit.hollowTube).toEqual({
+      lengthMeters: 0.10886,
+      reflection: 0.4,
+      loss: 1.5,
+      coupling: 0.45,
+      mouthRadiationHighpass: 429.96,
+    });
     expect(Object.isFrozen(defaultCicadaFit)).toBe(true);
     expect(Object.isFrozen(defaultCicadaFit.modes)).toBe(true);
+    expect(Object.isFrozen(defaultCicadaFit.hollowTube)).toBe(true);
+  });
+
+  it('builds a radiating membrane plus one-way and round-trip lossy tube paths', async () => {
+    vi.stubGlobal('AudioContext', undefined);
+    (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext = FakeWebkitAudioContext;
+    const voice = new SynthCicadaVoice();
+    await voice.unlock();
+
+    expect(FakeWebkitAudioContext.delays).toHaveLength(2);
+    expect(FakeWebkitAudioContext.delays[0]?.delayTime.value).toBeCloseTo(0.10886 / 343, 8);
+    expect(FakeWebkitAudioContext.delays[1]?.delayTime.value).toBeCloseTo(2 * 0.10886 / 343, 8);
+    expect(FakeWebkitAudioContext.filters.some((filter) => filter.type === 'highpass' && filter.frequency.value === 1863.85)).toBe(true);
+    expect(FakeWebkitAudioContext.filters.some((filter) => filter.type === 'highpass' && filter.frequency.value === 429.96)).toBe(true);
+    const lossCutoff = 4000 / Math.sqrt(Math.exp((2 * 1.5) / 3) - 1);
+    const tubeLossFilters = FakeWebkitAudioContext.filters.filter((filter) => filter.type === 'lowpass' && Math.abs(filter.frequency.value - lossCutoff) < 0.001);
+    expect(tubeLossFilters).toHaveLength(3);
+    expect(FakeWebkitAudioContext.gains.some((gain) => gain.gain.value === 0.4)).toBe(true);
+    expect(FakeWebkitAudioContext.gains.some((gain) => gain.gain.value === -0.45)).toBe(true);
+    voice.destroy();
   });
 
   it('maps the fitted rotation rate to about 78 stick-slip events per second', () => {
