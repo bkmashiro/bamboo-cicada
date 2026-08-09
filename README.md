@@ -1,9 +1,9 @@
-# bamboo-cicada
+# zhuzhiliao
 
-[![npm](https://img.shields.io/npm/v/bamboo-cicada)](https://www.npmjs.com/package/bamboo-cicada)
+[![npm](https://img.shields.io/npm/v/zhuzhiliao)](https://www.npmjs.com/package/zhuzhiliao)
 [![license: MIT](https://img.shields.io/badge/license-MIT-2f5847)](LICENSE)
 
-[在线试玩](https://bkmashiro.github.io/bamboo-cicada/) · [npm 包](https://www.npmjs.com/package/bamboo-cicada)
+[在线试玩](https://bkmashiro.github.io/bamboo-cicada/) · [npm 包](https://www.npmjs.com/package/zhuzhiliao)
 
 一个可以外挂到任意网页上的悬浮竹知了。默认直接可玩，同时允许替换知了 DOM、杆子 DOM、声音实现、渲染器与物理参数。
 
@@ -18,13 +18,17 @@
 
 ## 最快使用
 
+```bash
+pnpm add zhuzhiliao
+```
+
 ```ts
-import { mountBambooCicada } from 'bamboo-cicada';
+import { mountBambooCicada } from 'zhuzhiliao';
 
 mountBambooCicada(); // 默认挂载到 document.body，固定悬浮在右下角
 ```
 
-旧的 host-first 调用仍然可用：
+host-first 调用兼容现有项目：
 
 ```ts
 mountBambooCicada(document.querySelector('#some-host')!);
@@ -34,7 +38,7 @@ mountBambooCicada(document.querySelector('#some-host')!);
 
 ```html
 <script type="module">
-  import 'bamboo-cicada';
+  import 'zhuzhiliao';
 </script>
 
 <bamboo-cicada></bamboo-cicada>
@@ -114,7 +118,7 @@ mountBambooCicada({
 ## 替换音频
 
 ```ts
-import type { CicadaVoice, MotionState } from 'bamboo-cicada';
+import type { CicadaVoice, MotionState } from 'zhuzhiliao';
 
 class SampleVoice implements CicadaVoice {
   update(state: Readonly<MotionState>) {
@@ -153,7 +157,7 @@ mountBambooCicada({
 ## 替换完整渲染器
 
 ```ts
-import type { CicadaRenderer } from 'bamboo-cicada';
+import type { CicadaRenderer } from 'zhuzhiliao';
 
 const renderer: CicadaRenderer = {
   mount({ root, host }) {
