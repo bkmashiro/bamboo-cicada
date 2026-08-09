@@ -130,8 +130,15 @@ export class SampledCicadaVoice implements CicadaVoice {
       : window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
     const AudioContextClass = audioWindow?.AudioContext ?? audioWindow?.webkitAudioContext;
     if (!AudioContextClass) return;
-    if (!this.context) this.start(AudioContextClass);
-    if (this.context && this.context.state !== 'running' && this.context.state !== 'closed') {
+    if (!this.context) {
+      const context = new AudioContextClass();
+      this.context = context;
+      const resumed = context.state !== 'running' && context.state !== 'closed'
+        ? context.resume().catch(() => undefined)
+        : Promise.resolve();
+      this.start(context);
+      await resumed;
+    } else if (this.context.state !== 'running' && this.context.state !== 'closed') {
       await this.context.resume().catch(() => undefined);
     }
     if (this.context && this.pending && !this.decoded) {
@@ -168,8 +175,7 @@ export class SampledCicadaVoice implements CicadaVoice {
     this.pending = undefined;
   }
 
-  private start(AudioContextClass: typeof AudioContext): void {
-    const context = new AudioContextClass();
+  private start(context: AudioContext): void {
     const filter = context.createBiquadFilter();
     const output = context.createGain();
     const limiter = context.createWaveShaper();

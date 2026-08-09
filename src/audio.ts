@@ -248,7 +248,17 @@ export class SynthCicadaVoice implements CicadaVoice {
       : window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
     const AudioContextClass = audioWindow?.AudioContext ?? audioWindow?.webkitAudioContext;
     if (!AudioContextClass) return;
-    if (!this.context) this.start(AudioContextClass);
+    if (!this.context) {
+      const context = new AudioContextClass();
+      this.context = context;
+      // Claim transient user activation before slow buffer generation and graph setup.
+      const resumed = context.state !== 'running' && context.state !== 'closed'
+        ? context.resume().catch(() => undefined)
+        : Promise.resolve();
+      this.start(context);
+      await resumed;
+      return;
+    }
     if (this.context && this.context.state !== 'running' && this.context.state !== 'closed') {
       await this.context.resume().catch(() => undefined);
     }
@@ -329,8 +339,7 @@ export class SynthCicadaVoice implements CicadaVoice {
     this.modeFilters = [];
   }
 
-  private start(AudioContextClass: typeof AudioContext): void {
-    const context = new AudioContextClass();
+  private start(context: AudioContext): void {
     const pulse = context.createBufferSource();
     const noise = context.createBufferSource();
     const pulseGain = context.createGain();
