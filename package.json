@@ -2,6 +2,16 @@
   "name": "bamboo-cicada",
   "version": "0.1.0",
   "description": "A physics-driven bamboo cicada that floats over any web page.",
+  "keywords": ["bamboo-cicada", "web-component", "web-audio", "physics", "toy"],
+  "author": "Yuzhe Shi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bkmashiro/bamboo-cicada.git"
+  },
+  "homepage": "https://bkmashiro.github.io/bamboo-cicada/",
+  "bugs": {
+    "url": "https://github.com/bkmashiro/bamboo-cicada/issues"
+  },
   "type": "module",
   "license": "MIT",
   "sideEffects": true,
@@ -23,6 +33,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc -p tsconfig.lib.json",
+    "build:demo": "vite build --config vite.demo.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

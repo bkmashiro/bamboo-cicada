@@ -1,15 +1,20 @@
 # bamboo-cicada
 
+[![npm](https://img.shields.io/npm/v/bamboo-cicada)](https://www.npmjs.com/package/bamboo-cicada)
+[![license: MIT](https://img.shields.io/badge/license-MIT-2f5847)](LICENSE)
+
+[在线试玩](https://bkmashiro.github.io/bamboo-cicada/) · [npm 包](https://www.npmjs.com/package/bamboo-cicada)
+
 一个可以外挂到任意网页上的悬浮竹知了。默认直接可玩，同时允许替换知了 DOM、杆子 DOM、声音实现、渲染器与物理参数。
 
 - 运行时零依赖
 - Web Component + Shadow DOM
-- 页面上只渲染杆、绳和知了，没有卡片、标题或背景
+- 组件画面聚焦杆、绳和知了，宿主页面保持原有布局
 - 指针驱动的绳系质点物理
 - Web Audio 合成声音；转速影响音高、音色和音量
-- 完全本地运行，不请求素材或后端
+- 素材与逻辑随包本地运行
 
-> 本项目为独立实现，未复制参考项目 `imsai-sh/zhuzhiliao` 的源码、录音、图像或三维素材。
+> 代码、声音与视觉均为独立原创实现；参考项目 `imsai-sh/zhuzhiliao` 用于概念与架构研究。
 
 ## 最快使用
 
@@ -37,11 +42,11 @@ mountBambooCicada(document.querySelector('#some-host')!);
 
 ## 交互
 
-抓住杆子或知了本体，按住后画圈。输入移动的是杆端锚点，知了不会被锁死在圆周上，而是作为一个独立质点受到：
+抓住杆子或知了本体，按住后画圈。输入移动杆端锚点，知了作为独立质点受到：
 
 - 重力；
 - 空气阻力；
-- 只拉不推的弹性绳张力；
+- 拉伸阶段生效的弹性绳张力；
 - 绳方向径向阻尼。
 
 每帧内部以固定小步长积分，页面掉帧时也会限制最大能量注入。松手后，知了继续靠惯性摆动并逐渐停下。默认手势位移有 `1.45×` 增益，方便触屏用较小的拇指圈甩响；可用 `inputGain` 调整或设为 `1`。
@@ -104,7 +109,7 @@ mountBambooCicada({
 </bamboo-cicada>
 ```
 
-组件只变换 slot 外层包装器，因此你的 DOM 内容和内部样式由你自己控制。
+组件变换 slot 外层包装器，你的 DOM 内容和内部样式继续由应用控制。
 
 ## 替换音频
 
@@ -163,7 +168,7 @@ const renderer: CicadaRenderer = {
 mountBambooCicada({ renderer });
 ```
 
-默认 `DefaultCicadaRenderer` 只是一个实现。3D 可以作为独立 renderer 包接入，不需要进入核心物理或音频层。
+`DefaultCicadaRenderer` 提供开箱即用的 DOM 表现。3D 可以作为独立 renderer 包接入，并复用核心物理与音频状态。
 
 ## 本地试玩
 
@@ -172,7 +177,7 @@ pnpm install
 pnpm dev
 ```
 
-试玩页是一张普通的本地网页，竹知了通过 `mountBambooCicada()` 额外挂载；网络面板中不会出现素材或后端请求。
+试玩页是一张普通的本地网页，竹知了通过 `mountBambooCicada()` 额外挂载；网络面板保持零外部素材与后端请求。
 
 ## 验证
 

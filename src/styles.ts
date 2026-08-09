@@ -29,19 +29,26 @@ export const floatingStyles = `
     stroke-linecap: round;
     filter: drop-shadow(0 1px 1px rgba(255,255,255,.45));
   }
-  .part { position: absolute; left: 0; top: 0; will-change: transform; }
+  .part {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
   .pole, .cicada {
     pointer-events: auto;
     cursor: grab;
     touch-action: none;
   }
   .pole:active, .cicada:active { cursor: grabbing; }
-  .pole { transform-origin: 50% 8px; }
   .default-pole {
     position: relative;
     width: 28px;
     height: 132px;
-    transform: translate(-14px, -7px);
+    transform: translate(-14px, -9px);
     filter: drop-shadow(1px 4px 3px rgba(35, 24, 10, .24));
   }
   .default-pole::before {
@@ -72,7 +79,7 @@ export const floatingStyles = `
     position: relative;
     width: 76px;
     height: 84px;
-    transform: translate(-38px, -13px);
+    transform: translate(-38px, -10.5px);
     filter: drop-shadow(2px 7px 5px rgba(28, 20, 10, .28));
   }
   .default-cicada .tube {

@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#e9e3ce" />
-  <title>山野小报 · Bamboo Cicada 本地试玩</title>
+  <title>Bamboo Cicada · 可嵌入网页的竹知了</title>
+  <meta name="description" content="一个带绳系物理与变音效果的悬浮竹知了 Web Component。支持替换 DOM、音频、渲染器和物理参数。" />
   <style>
     :root { color: #203128; background: #e9e3ce; font-family: "Songti SC", "STSong", Georgia, serif; }
     * { box-sizing: border-box; }
@@ -27,8 +28,11 @@
     .kicker::before { content: ''; width: 40px; height: 1px; background: currentColor; }
     h1 { max-width: 7ch; margin: 22px 0 25px; font-size: clamp(62px, 10vw, 126px); font-weight: 600; line-height: .9; letter-spacing: -.08em; }
     .intro { max-width: 470px; margin: 0; color: #4d5f55; font-size: 17px; line-height: 1.9; }
-    .scroll-mark { display: inline-flex; align-items: center; gap: 12px; margin-top: 44px; color: #56665d; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .13em; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 44px; }
+    .scroll-mark { display: inline-flex; align-items: center; gap: 12px; color: #56665d; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .13em; }
     .scroll-mark::before { content: '↓'; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid currentColor; border-radius: 50%; }
+    .npm-link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border-radius: 999px; color: #fff8e8; background: #a63a2a; text-decoration: none; font: 750 12px/1 system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 7px 18px rgba(118,45,34,.18); }
+    .npm-link:hover { background: #853126; }
     .stories { position: relative; width: min(1120px, calc(100% - 36px)); margin: auto; padding: 90px 0 150px; }
     .stories-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 36px; }
     .stories h2 { margin: 0; font-size: clamp(35px, 5vw, 62px); font-weight: 550; letter-spacing: -.04em; }
@@ -39,7 +43,7 @@
     article small { font: 700 11px/1 system-ui, sans-serif; letter-spacing: .15em; opacity: .68; }
     article h3 { max-width: 12ch; margin: 52px 0 12px; font-size: clamp(28px, 4vw, 49px); font-weight: 550; line-height: 1.08; }
     article p { max-width: 38em; color: inherit; opacity: .72; line-height: 1.8; }
-    .play-tools { position: fixed; z-index: 2147483001; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 7px; border: 1px solid rgba(31,49,40,.16); border-radius: 999px; background: rgba(249,246,235,.84); box-shadow: 0 12px 35px rgba(32,49,40,.13); backdrop-filter: blur(14px); }
+    .play-tools { position: fixed; z-index: 2147483001; left: max(14px, env(safe-area-inset-left)); top: 92px; display: flex; gap: 8px; padding: 7px; border: 1px solid rgba(31,49,40,.16); border-radius: 999px; background: rgba(249,246,235,.84); box-shadow: 0 12px 35px rgba(32,49,40,.13); backdrop-filter: blur(14px); }
     .play-tools button { min-height: 38px; padding: 0 15px; border: 0; border-radius: 999px; color: #23382e; background: transparent; cursor: pointer; font: 700 12px/1 system-ui, sans-serif; }
     .play-tools button:hover, .play-tools button[aria-pressed='true'] { color: #fffaf0; background: #2f5847; }
     .tip { position: fixed; z-index: 2147483001; right: 24px; bottom: 20px; width: 198px; padding: 12px 15px; border-radius: 13px; color: #fff8e8; background: rgba(35,54,45,.9); font: 600 12px/1.55 system-ui, sans-serif; pointer-events: none; transform: translateY(-390px); transition: opacity .35s, transform .35s; box-shadow: 0 8px 30px rgba(26,38,32,.18); }
@@ -51,7 +55,7 @@
       h1 { font-size: 70px; }
       .sun { right: -25px; top: 120px; width: 104px; }
       .story-grid { grid-template-columns: 1fr; }
-      .play-tools { bottom: 10px; }
+      .play-tools { top: 82px; }
       .play-tools button { padding: 0 12px; }
       .tip { right: 16px; bottom: 12px; transform: translateY(-310px); }
       .tip.hidden { transform: translateY(-300px); }
@@ -61,7 +65,7 @@
 <body>
   <header class="site-header">
     <div class="brand"><span class="seal">野</span>山野小报</div>
-    <nav aria-label="主导航"><a href="#stories">节气</a><a href="#stories">手艺</a><a href="#stories">声音</a></nav>
+    <nav aria-label="主导航"><a href="#stories">节气</a><a href="#stories">手艺</a><a href="#stories">声音</a><a href="https://www.npmjs.com/package/bamboo-cicada" target="_blank" rel="noreferrer">npm ↗</a></nav>
   </header>
 
   <main>
@@ -70,8 +74,11 @@
       <div class="hero-copy">
         <div class="kicker">LOCAL PLAYGROUND · 夏日号</div>
         <h1>风从竹梢来</h1>
-        <p class="intro">这是一张普通的本地网页。竹知了由独立 JS 库悬浮挂载在页面之上，不接管背景，也不向外发送任何请求。</p>
-        <a class="scroll-mark" href="#stories">继续阅读</a>
+        <p class="intro">这是一张普通的本地网页。独立 JS 库将竹知了悬浮挂载在页面之上，素材、声音与交互完整保存在浏览器本地。</p>
+        <div class="hero-actions">
+          <a class="scroll-mark" href="#stories">继续阅读</a>
+          <a class="npm-link" href="https://www.npmjs.com/package/bamboo-cicada" target="_blank" rel="noreferrer">npm · bamboo-cicada ↗</a>
+        </div>
       </div>
     </section>
 
@@ -79,7 +86,7 @@
       <div class="stories-head"><h2>夏日风物</h2><span>VOL. 06 · 2026</span></div>
       <div class="story-grid">
         <article><small>声音档案 01</small><h3>一根细绳，如何让竹筒开口歌唱</h3><p>握住杆子画圈。杆端牵引绳系质点，绳张紧后，角速度会同时改变音量、音高与音色亮度。</p></article>
-        <article><small>接口样例 02</small><h3>换成你的 DOM</h3><p>默认知了、杆子、音频和物理参数都可独立替换；页面样式仍由原网站自己决定。</p></article>
+        <article><small>接口样例 02</small><h3>换成你的 DOM</h3><p>知了、杆子、音频与物理参数均提供独立接口，宿主页面继续使用自己的视觉系统。</p></article>
       </div>
     </section>
   </main>
