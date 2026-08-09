@@ -12,8 +12,8 @@ export class DefaultCicadaRenderer implements CicadaRenderer {
   mount({ root }: RendererMountContext): void {
     this.root = root;
     root.innerHTML = `<style>${floatingStyles}</style>
-      <div class="scene" part="surface" role="application" aria-label="可甩动的竹知了">
-        <svg class="cord-layer" viewBox="0 0 340 430" preserveAspectRatio="none" aria-hidden="true">
+      <div class="scene" part="surface" role="button" tabindex="0" aria-label="可甩动的竹知了">
+        <svg class="cord-layer" viewBox="0 0 340 430" aria-hidden="true">
           <path class="cord" part="cord" />
         </svg>
         <div class="part pole" part="pole">
@@ -42,14 +42,16 @@ export class DefaultCicadaRenderer implements CicadaRenderer {
 
   render(state: Readonly<MotionState>): void {
     const { anchor, body, rope } = state;
-    const hostWidth = (this.root?.host as HTMLElement | undefined)?.getBoundingClientRect().width || 340;
-    const scale = hostWidth / 340;
+    const hostRect = (this.root?.host as HTMLElement | undefined)?.getBoundingClientRect();
+    const hostWidth = Math.max(1, hostRect?.width || window.innerWidth || 340);
+    const hostHeight = Math.max(1, hostRect?.height || window.innerHeight || 430);
     const bodyAngle = rope.angle * 180 / Math.PI - 90;
-    const poleLean = Math.max(-8, Math.min(8, (anchor.x - 170) * 0.035));
-    this.pole?.style.setProperty('transform', `translate3d(${anchor.x * scale}px, ${anchor.y * scale}px, 0) rotate(${poleLean}deg) scale(${scale})`);
-    this.cicada?.style.setProperty('transform', `translate3d(${body.x * scale}px, ${body.y * scale}px, 0) rotate(${bodyAngle}deg) scale(${scale})`);
+    const poleLean = Math.max(-8, Math.min(8, (anchor.x - hostWidth * 0.72) * 0.02));
+    this.pole?.style.setProperty('transform', `translate3d(${anchor.x}px, ${anchor.y}px, 0) rotate(${poleLean}deg)`);
+    this.cicada?.style.setProperty('transform', `translate3d(${body.x}px, ${body.y}px, 0) rotate(${bodyAngle}deg)`);
 
     if (this.cord) {
+      this.cord.ownerSVGElement?.setAttribute('viewBox', `0 0 ${hostWidth} ${hostHeight}`);
       const slack = Math.max(0, rope.length - rope.distance);
       const midX = (anchor.x + body.x) / 2;
       const midY = (anchor.y + body.y) / 2 + slack * 0.42;

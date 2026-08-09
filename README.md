@@ -25,7 +25,7 @@ pnpm add zhuzhiliao
 ```ts
 import { mountBambooCicada } from 'zhuzhiliao';
 
-mountBambooCicada(); // 默认挂载到 document.body，固定悬浮在右下角
+mountBambooCicada(); // 默认挂载到 document.body，透明坐标层覆盖整个视口
 ```
 
 host-first 调用兼容现有项目：
@@ -59,7 +59,7 @@ mountBambooCicada(document.querySelector('#some-host')!);
 const toy = mountBambooCicada({ inputGain: 1.2 });
 toy.startAuto();
 toy.stopAuto();
-toy.setAnchor(170, 120); // 340 × 430 逻辑坐标
+toy.setAnchor(520, 180); // 当前视口内的 CSS 像素坐标
 console.log(toy.motion);
 ```
 
@@ -67,11 +67,11 @@ console.log(toy.motion);
 
 会。默认 `SynthCicadaVoice` 使用绳方向角速度、绳长比、转动相位和活动强度共同驱动声音：
 
-- 转得越快：基础频率越高；
-- 转得越快：带通中心频率越高，声音更亮；
-- 每圈相位：产生轻微 detune 摆动；
+- 转得越快：粘滑脉冲密度越高；
+- 转得越快：辐射低通的截止频率越高，声音更亮；
+- 每圈相位：产生周期性振幅调制（AM）与轻微 detune 摆动；
 - 绳松弛：音量门控为零；
-- 张紧且快速旋转：音量逐渐升高。
+- 张紧且快速旋转：膜面模态、激励强度与音量连续变化。
 
 映射函数 `mapVoiceParameters(state)` 是公开的，开发者可以复用同一运动状态连接自己的采样器或音频引擎。
 
@@ -117,10 +117,27 @@ mountBambooCicada({
 
 ## 替换音频
 
+默认声音采用轻量 source–filter physical model：
+
+```text
+stick-slip pulse + friction noise
+              ↓
+      membrane modal bank
+              ↓
+       bamboo cavity modes
+              ↓
+ rotation AM + radiation filter
+```
+
+`SynthCicadaVoice` 开放 `friction`、`membraneTension`、`tubeLength` 和 `tubeDiameter`，实时调整松香摩擦、膜面张力与竹筒腔体。首次指针或键盘操作会解锁 Web Audio。
+
 ```ts
 import type { CicadaVoice, MotionState } from 'zhuzhiliao';
 
 class SampleVoice implements CicadaVoice {
+  unlock() {
+    // 在用户手势中创建或恢复你的 AudioContext
+  }
   update(state: Readonly<MotionState>) {
     // 使用 state.rope.angularVelocity / tension / angle 驱动采样器
   }
@@ -173,6 +190,8 @@ mountBambooCicada({ renderer });
 ```
 
 `DefaultCicadaRenderer` 提供开箱即用的 DOM 表现。3D 可以作为独立 renderer 包接入，并复用核心物理与音频状态。
+
+Renderer 所有权与 voice 一致：factory 返回的实例由组件销毁，直接传入的对象适合作为外部共享资源。
 
 ## 本地试玩
 

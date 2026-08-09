@@ -1,13 +1,13 @@
 import type { BodyPoint, Point, RopeState } from './physics';
 
 export interface MotionState {
-  time: number;
-  anchor: Point;
-  body: BodyPoint;
-  rope: RopeState;
-  activity: number;
-  dragging: boolean;
-  auto: boolean;
+  readonly time: number;
+  readonly anchor: Readonly<Point>;
+  readonly body: Readonly<BodyPoint>;
+  readonly rope: Readonly<RopeState>;
+  readonly activity: number;
+  readonly dragging: boolean;
+  readonly auto: boolean;
 }
 
 export type PartSource = Element | (() => Element);

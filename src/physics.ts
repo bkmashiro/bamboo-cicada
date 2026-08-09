@@ -35,19 +35,21 @@ export interface PhysicsState {
   previousAngle: number;
 }
 
-export const defaultPhysicsOptions: PhysicsOptions = {
+export const defaultPhysicsOptions: Readonly<PhysicsOptions> = Object.freeze({
   ropeLength: 116,
   stiffness: 2200,
   radialDamping: 15,
   gravity: 720,
   airDrag: 0.72,
   fixedStep: 1 / 240,
-};
+});
 
 const TAU = Math.PI * 2;
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-const finiteInRange = (value: number | undefined, fallback: number, min: number, max: number): number =>
-  Number.isFinite(value) ? clamp(value as number, min, max) : fallback;
+const finiteInRange = (value: number | undefined, fallback: number, min: number, max: number): number => {
+  const safeFallback = Number.isFinite(fallback) ? clamp(fallback, min, max) : min;
+  return Number.isFinite(value) ? clamp(value as number, min, max) : safeFallback;
+};
 
 export function createPhysics(anchor: Point, overrides: Partial<PhysicsOptions> = {}): PhysicsState {
   const options: PhysicsOptions = {
@@ -75,7 +77,7 @@ export function createPhysics(anchor: Point, overrides: Partial<PhysicsOptions> 
     body,
     rope: {
       length: options.ropeLength,
-      distance: Math.hypot(body.x - anchor.x, body.y - anchor.y),
+      distance: Math.hypot(body.x - safeAnchor.x, body.y - safeAnchor.y),
       tension: 0,
       angle,
       angularVelocity: 0,
@@ -137,7 +139,13 @@ function substep(state: PhysicsState, elapsed: number): void {
 }
 
 export function stepPhysics(state: PhysicsState, elapsedSeconds: number): PhysicsState {
-  const elapsed = clamp(elapsedSeconds, 0, 0.1);
+  const elapsed = Number.isFinite(elapsedSeconds) ? clamp(elapsedSeconds, 0, 0.1) : 0;
+  state.options.fixedStep = finiteInRange(
+    state.options.fixedStep,
+    defaultPhysicsOptions.fixedStep,
+    1 / 2_000,
+    1 / 30,
+  );
   let remaining = elapsed;
   while (remaining > 1e-8) {
     const step = Math.min(state.options.fixedStep, remaining);
@@ -154,7 +162,12 @@ export function stepPhysics(state: PhysicsState, elapsedSeconds: number): Physic
   state.previousAngle = angle;
   state.rope.angle = angle;
   state.rope.distance = distance;
-  state.rope.tension = Math.max(0, distance - state.options.ropeLength) * state.options.stiffness;
+  const finalDistance = Math.max(1e-6, distance);
+  const radialVelocity = (state.body.vx * dx + state.body.vy * dy) / finalDistance;
+  const stretch = Math.max(0, distance - state.options.ropeLength);
+  state.rope.tension = stretch > 0
+    ? Math.max(0, state.options.stiffness * stretch + state.options.radialDamping * radialVelocity)
+    : 0;
 
   const turns = Math.abs(state.rope.angularVelocity) / TAU;
   const tautness = clamp((distance / state.options.ropeLength - 0.84) / 0.16, 0, 1);

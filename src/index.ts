@@ -3,8 +3,8 @@ import { BambooCicadaElement, type BambooCicadaOptions } from './bamboo-cicada';
 export { BambooCicadaElement };
 export type { BambooCicadaOptions };
 export { DefaultCicadaRenderer } from './renderer';
-export { SynthCicadaVoice, mapVoiceParameters } from './audio';
-export type { CicadaVoice, VoiceParameters } from './audio';
+export { SynthCicadaVoice, mapVoiceParameters, defaultCicadaAcoustics } from './audio';
+export type { CicadaAcoustics, CicadaVoice, VoiceParameters } from './audio';
 export { createPhysics, stepPhysics, defaultPhysicsOptions } from './physics';
 export type { BodyPoint, PhysicsOptions, PhysicsState, Point, RopeState } from './physics';
 export type {
@@ -28,6 +28,9 @@ export function mountBambooCicada(
   hostOrOptions?: Element | BambooCicadaOptions,
   maybeOptions: BambooCicadaOptions = {},
 ): BambooCicadaElement {
+  if (typeof document === 'undefined') {
+    throw new Error('mountBambooCicada() requires a browser document. Importing zhuzhiliao remains SSR-safe.');
+  }
   defineBambooCicada();
   const isHost = hostOrOptions != null && typeof (hostOrOptions as Element).append === 'function';
   const host = isHost ? hostOrOptions as Element : document.body;

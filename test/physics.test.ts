@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPhysics, stepPhysics, type PhysicsState } from '../src/physics';
+import { createPhysics, defaultPhysicsOptions, stepPhysics, type PhysicsState } from '../src/physics';
 
 describe('rope physics', () => {
   it('starts with a hanging body and a slack-safe rope', () => {
@@ -40,6 +40,26 @@ describe('rope physics', () => {
     expect(state.options.fixedStep).toBeGreaterThan(0);
     expect(Object.values(state.options).every(Number.isFinite)).toBe(true);
     expect(() => stepPhysics(state, 1)).not.toThrow();
+    expect(Number.isFinite(state.body.x)).toBe(true);
+    expect(Number.isFinite(state.body.y)).toBe(true);
+  });
+
+  it('keeps exported defaults immutable and initial state finite for unsafe anchors', () => {
+    expect(Object.isFrozen(defaultPhysicsOptions)).toBe(true);
+    expect(() => {
+      (defaultPhysicsOptions as { fixedStep: number }).fixedStep = 0;
+    }).toThrow();
+
+    const state = createPhysics({ x: Number.NaN, y: Number.POSITIVE_INFINITY });
+    expect(Object.values(state.anchor).every(Number.isFinite)).toBe(true);
+    expect(Number.isFinite(state.rope.distance)).toBe(true);
+  });
+
+  it('repairs a corrupted integration step before entering the substep loop', () => {
+    const state = createPhysics({ x: 140, y: 100 });
+    state.options.fixedStep = Number.NaN;
+    stepPhysics(state, 0.01);
+    expect(state.options.fixedStep).toBeGreaterThan(0);
     expect(Number.isFinite(state.body.x)).toBe(true);
     expect(Number.isFinite(state.body.y)).toBe(true);
   });

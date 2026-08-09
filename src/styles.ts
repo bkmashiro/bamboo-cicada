@@ -1,13 +1,12 @@
 export const floatingStyles = `
   :host {
     position: fixed;
-    right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    inset: 0;
     z-index: 2147483000;
     display: block;
-    width: min(76vw, 340px);
-    aspect-ratio: 340 / 430;
-    height: auto;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     pointer-events: none;
     contain: layout style;
     user-select: none;
@@ -38,7 +37,9 @@ export const floatingStyles = `
     transform-origin: 0 0;
     will-change: transform;
   }
-  .pole, .cicada {
+  .pole, .cicada,
+  .default-pole, .default-cicada,
+  slot[name='pole']::slotted(*), slot[name='cicada']::slotted(*) {
     pointer-events: auto;
     cursor: grab;
     touch-action: none;
@@ -70,7 +71,7 @@ export const floatingStyles = `
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: radial-gradient(circle at 33% 28%, #ff8d5d 0 8%, #b92820 34%, #6d0f13 78%);
+    background: radial-gradient(circle at 33% 28%, #ff8d5d 0 8%, var(--bc-accent, #b92820) 34%, #6d0f13 78%);
     border: 1px solid #6e1011;
   }
   .default-pole .bead.top { top: 0; }
@@ -104,7 +105,7 @@ export const floatingStyles = `
     z-index: 4;
     border-radius: 50%;
     border: 2px solid #731415;
-    background: radial-gradient(ellipse, #e8bd70 0 49%, #9f241f 51% 72%, #5d1012 74%);
+    background: radial-gradient(ellipse, #e8bd70 0 49%, var(--bc-accent, #9f241f) 51% 72%, #5d1012 74%);
   }
   .default-cicada .wing {
     position: absolute;
