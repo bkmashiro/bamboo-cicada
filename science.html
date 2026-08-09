@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4edda" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='22' fill='%230e4e3e'/%3E%3Cpath d='M18 35c7-12 21-12 28 0-7 13-21 13-28 0Zm14-5v18M20 25l12 5 12-5' fill='none' stroke='%23f0c75e' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <title>竹知了科学报告 · 从一根绳到一声盛夏</title>
+  <meta name="description" content="竹知了实时物理与声学模型的可交互科学报告：绳系质点、粘滑激励、薄膜模态、辐射高通、有损竹筒波导与旋转调制。" />
+  <style>
+    :root {
+      color: #173f35; background: #f8f2e2;
+      font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", ui-sans-serif, system-ui, sans-serif;
+      --ink:#173f35; --leaf:#277357; --deep:#0e4e3e; --mint:#b9dfc9; --paper:#f8f2e2;
+      --sun:#f0c75e; --cicada:#e97144; --line:rgba(23,63,53,.19); --muted:rgba(23,63,53,.68);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth;scroll-padding-top:92px} body{margin:0;overflow-x:hidden;background:var(--paper)}
+    button,input{font:inherit} a{color:inherit} button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid rgba(233,113,68,.52);outline-offset:3px}
+    .site-header{position:sticky;z-index:30;top:0;display:flex;align-items:center;justify-content:space-between;padding:15px max(24px,calc((100vw - 1180px)/2));border-bottom:1px solid var(--line);background:rgba(248,242,226,.88);backdrop-filter:blur(15px)}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:760;letter-spacing:-.03em}.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:50% 44% 50% 45%;color:var(--paper);background:var(--deep);font:800 11px/1 ui-monospace,monospace;transform:rotate(-7deg)}
+    nav{display:flex;align-items:center;gap:20px;font-size:12px;font-weight:650;color:var(--muted)}nav a{text-decoration:none}nav a:hover{color:var(--cicada)}.nav-home{padding:9px 14px;border:1px solid var(--ink);border-radius:99px}
+    .hero{position:relative;min-height:78svh;display:grid;align-items:end;overflow:hidden;background:linear-gradient(145deg,#e3efdc 0%,#f8f2e2 51%,#d7eadc 100%)}
+    .hero:before{content:"";position:absolute;inset:8% -9vw auto auto;width:43vw;height:43vw;border:1px solid rgba(23,63,53,.12);border-radius:50%;box-shadow:0 0 0 7vw rgba(240,199,94,.16),0 0 0 15vw rgba(39,115,87,.06)}
+    .hero-inner{position:relative;width:min(1180px,calc(100% - 48px));margin:auto;padding:100px 0 72px;display:grid;grid-template-columns:1.2fr .8fr;gap:72px;align-items:end}
+    .kicker{color:var(--cicada);font:750 11px/1 ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase}.hero h1{max-width:830px;margin:25px 0 28px;font:620 clamp(58px,8vw,108px)/.91 Georgia,"Songti SC",serif;letter-spacing:-.07em}.hero h1 em{display:block;color:var(--cicada);font-style:normal}.hero-lede{max-width:700px;margin:0;color:var(--muted);font-size:clamp(16px,1.5vw,20px);line-height:1.85}
+    .abstract{padding:26px;border-left:1px solid var(--ink);background:rgba(255,255,255,.24)}.abstract strong{display:block;margin-bottom:16px;font:700 11px/1 ui-monospace,monospace;letter-spacing:.11em}.abstract p{margin:0;color:var(--muted);font-size:13px;line-height:1.8}.abstract dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:23px 0 0;font:11px/1.4 ui-monospace,monospace}.abstract dt{color:var(--cicada)}.abstract dd{margin:0}
+    .report-nav{border-block:1px solid var(--line);background:#fffaf0}.report-nav-inner{width:min(1180px,100%);margin:auto;display:grid;grid-template-columns:repeat(6,1fr)}.report-nav a{padding:18px;border-right:1px dashed var(--line);text-decoration:none;font:700 10px/1.4 ui-monospace,monospace}.report-nav a:last-child{border-right:0}.report-nav span{display:block;margin-bottom:6px;color:var(--cicada)}
+    main{counter-reset:section}.chapter{padding:105px 24px;border-bottom:1px solid var(--line)}.chapter:nth-child(even){background:#fffaf0}.chapter-inner{width:min(1180px,100%);margin:auto}.chapter-head{display:grid;grid-template-columns:120px minmax(0,1fr);gap:28px;margin-bottom:56px}.chapter-no{color:var(--cicada);font:750 11px/1 ui-monospace,monospace;letter-spacing:.13em}.chapter h2{max-width:920px;margin:0;font:620 clamp(40px,5.5vw,72px)/1 Georgia,"Songti SC",serif;letter-spacing:-.05em}.chapter-intro{max-width:780px;margin:22px 0 0;color:var(--muted);font-size:15px;line-height:1.82}
+    .two-col{display:grid;grid-template-columns:minmax(0,.82fr) minmax(440px,1.18fr);gap:46px;align-items:start}.two-col>*{min-width:0}.prose,.lab,.equation{min-width:0}.prose h3{margin:0 0 14px;font:620 26px/1.15 Georgia,"Songti SC",serif}.prose h3:not(:first-child){margin-top:42px}.prose p{color:var(--muted);font-size:14px;line-height:1.84}.prose ul{padding-left:20px;color:var(--muted);line-height:1.75}.callout{margin:28px 0;padding:18px 20px;border-left:4px solid var(--sun);background:rgba(240,199,94,.16);font-size:13px;line-height:1.7}
+    .equation{margin:24px 0;border:1px solid var(--line);background:rgba(255,255,255,.45)}.equation-label{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px dashed var(--line);color:var(--muted);font:10px/1 ui-monospace,monospace}.equation math{display:block;max-width:100%;overflow-x:auto;padding:24px 18px;font-size:clamp(17px,1.75vw,23px);scrollbar-color:var(--cicada) transparent;scrollbar-width:thin}details.tex{border-top:1px dashed var(--line)}details.tex summary{padding:10px 14px;cursor:pointer;color:var(--cicada);font:700 10px/1 ui-monospace,monospace}details.tex code{display:block;padding:0 14px 14px;overflow-x:auto;white-space:pre;color:var(--deep);font:11px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .lab{border:1px solid rgba(23,63,53,.27);border-radius:26px 26px 14px 26px;overflow:hidden;background:#f8f2e2;box-shadow:rgba(23,63,53,.1) 0 20px 50px}.lab-head{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px dashed var(--line)}.lab-head strong{font:730 12px/1 ui-monospace,monospace}.lab-head span{color:var(--cicada);font:10px/1 ui-monospace,monospace}.canvas-wrap{position:relative;height:320px;background:#123e33}.canvas-wrap canvas{display:block;width:100%;height:100%}.canvas-legend{position:absolute;inset:14px 14px auto auto;display:grid;gap:5px;color:#e6f1dd;font:9px/1.3 ui-monospace,monospace}.canvas-legend i{display:inline-block;width:16px;height:2px;margin-right:6px;vertical-align:middle;background:var(--sun)}
+    .lab-controls{display:grid;gap:12px;padding:20px}.control{display:grid;grid-template-columns:120px 1fr 72px;gap:12px;align-items:center}.control label{font-size:11px;color:var(--muted)}.control input[type=range]{width:100%;accent-color:var(--cicada)}.control output{text-align:right;white-space:nowrap;font:700 10px/1 ui-monospace,monospace}.control.switch{grid-template-columns:1fr auto}.control.switch input{width:20px;height:20px;accent-color:var(--deep)}
+    .lab-actions{display:flex;gap:9px;padding:0 20px 20px}.lab-actions button{min-height:40px;padding:0 16px;border:1px solid var(--ink);border-radius:99px;color:var(--ink);background:transparent;cursor:pointer;font-size:11px;font-weight:720}.lab-actions button.primary{color:var(--paper);background:var(--deep)}
+    .readouts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px dashed var(--line)}.readout{min-width:0;padding:14px;border-right:1px dashed var(--line)}.readout:last-child{border-right:0}.readout small{display:block;color:var(--muted);font:8px/1 ui-monospace,monospace}.readout output{display:block;margin-top:8px;overflow:hidden;text-overflow:ellipsis;color:var(--deep);font:750 14px/1 ui-monospace,monospace;white-space:nowrap}
+    .chain{display:grid;grid-template-columns:repeat(6,1fr);border:1px solid var(--line);background:#fffaf0}.chain article{position:relative;min-height:176px;padding:20px;border-right:1px dashed var(--line)}.chain article:last-child{border-right:0}.chain article:not(:last-child):after{content:"→";position:absolute;z-index:2;right:-10px;top:50%;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--sun);font:12px/1 monospace}.chain small{color:var(--cicada);font:10px/1 monospace}.chain h3{margin:42px 0 10px;font:600 18px/1.1 Georgia,serif}.chain p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+    table{width:100%;border-collapse:collapse;font-size:12px;background:rgba(255,255,255,.38)}th,td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font:700 9px/1 ui-monospace,monospace;letter-spacing:.06em}td code{color:var(--cicada);font:11px/1 ui-monospace,monospace}.scope-note{margin:30px 0 0;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.75}
+    .spectrum-lab .canvas-wrap{height:420px}.layer-key{display:flex;flex-wrap:wrap;gap:12px;padding:13px 20px;border-bottom:1px dashed var(--line);font:10px/1 ui-monospace,monospace}.layer-key span:before{content:"";display:inline-block;width:18px;height:3px;margin-right:7px;vertical-align:middle;background:var(--key)}
+    .conclusion{padding:110px 24px;color:var(--paper);background:var(--deep)}.conclusion-inner{width:min(1180px,100%);margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:60px}.conclusion h2{margin:0;font:620 clamp(44px,6vw,78px)/.98 Georgia,"Songti SC",serif;letter-spacing:-.05em}.conclusion p{color:rgba(248,242,226,.7);line-height:1.85}.conclusion a{color:var(--sun)}footer{display:flex;justify-content:space-between;padding:22px max(24px,calc((100vw - 1180px)/2));color:rgba(248,242,226,.68);background:#082f26;font:10px/1.4 ui-monospace,monospace}
+    @media(max-width:900px){nav a:not(.nav-home){display:none}.hero-inner,.two-col,.conclusion-inner{grid-template-columns:1fr}.hero-inner{padding-top:74px;gap:40px}.report-nav-inner{grid-template-columns:repeat(3,1fr)}.report-nav a:nth-child(3){border-right:0}.chapter-head{grid-template-columns:1fr;gap:12px}.two-col{gap:32px}.chain{grid-template-columns:repeat(2,1fr)}.chain article:nth-child(2n){border-right:0}.chain article{border-bottom:1px dashed var(--line)}.lab{order:2}}
+    @media(max-width:560px){.site-header{padding-inline:15px}.brand span:last-child{font-size:13px}.hero-inner{width:calc(100% - 30px);padding-bottom:48px}.hero h1{font-size:54px}.abstract{padding:20px}.report-nav-inner{grid-template-columns:repeat(2,1fr)}.report-nav a:nth-child(3){border-right:1px dashed var(--line)}.report-nav a:nth-child(2n){border-right:0}.chapter{padding:76px 15px}.chapter h2{font-size:42px}.control{grid-template-columns:88px 1fr 58px;gap:8px}.canvas-wrap{height:280px}.spectrum-lab .canvas-wrap{height:340px}.readouts{grid-template-columns:1fr 1fr}.readout:nth-child(2){border-right:0}.readout:nth-child(-n+2){border-bottom:1px dashed var(--line)}.chain{grid-template-columns:1fr}.chain article{min-height:145px;border-right:0}.chain article:not(:last-child):after{content:"↓";right:calc(50% - 10px);top:auto;bottom:-10px}.equation math{font-size:16px}table{display:block;max-width:100%;overflow-x:auto;white-space:nowrap}.conclusion{padding:80px 15px}footer{display:grid;gap:8px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./"><span class="brand-mark">ZZL</span><span>zhuzhiliao · 科学报告</span></a>
+    <nav aria-label="报告导航"><a href="#physics">物理</a><a href="#excitation">激励</a><a href="#acoustics">声学</a><a href="#spectrum">频谱</a><a class="nav-home" href="./">返回试玩</a></nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="kicker">Interactive scientific report · model v0.3</div>
+        <h1>从一根绳，<em>推导一声盛夏。</em></h1>
+        <p class="hero-lede">竹知了的声音不是一段循环录音。手腕先把角动量送进绳系质点，松香接触产生不规则粘滑脉冲，两个薄膜有效模态被反复擦响；其中一支声音穿过有损竹筒，再从管口反相叠回。</p>
+      </div>
+      <aside class="abstract">
+        <strong>ABSTRACT / 摘要</strong>
+        <p>本页记录浏览器实时实现的状态方程、拟合参数与近似边界。互动图调用生产物理模型或同一解析频响，不用装饰动画冒充测量。</p>
+        <dl><dt>METHOD</dt><dd>reduced-order physical modelling</dd><dt>FIT BAND</dt><dd>300–7000 Hz</dd><dt>RUNTIME</dt><dd>Web Audio + fixed-step mechanics</dd><dt>NETWORK</dt><dd>none</dd></dl>
+      </aside>
+    </div>
+  </section>
+
+  <div class="report-nav"><div class="report-nav-inner">
+    <a href="#overview"><span>00</span>模型总览</a><a href="#physics"><span>01</span>绳系质点</a><a href="#excitation"><span>02</span>粘滑激励</a><a href="#acoustics"><span>03</span>膜与竹筒</a><a href="#spectrum"><span>04</span>频谱实验台</a><a href="#limits"><span>05</span>边界与证据</a>
+  </div></div>
+
+  <main>
+    <section class="chapter" id="overview"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">00 / SYSTEM</div><div><h2>六层模型，各自只做一件事。</h2><p class="chapter-intro">运动决定激励强度，激励唤醒结构，结构决定音色，旋转方向决定远近。把层次拆开，开发者可以替换任一部分，也可以清楚知道每个参数在哪里生效。</p></div></div>
+      <div class="chain">
+        <article><small>01</small><h3>手腕与绳</h3><p>锚点运动、重力、阻尼、单向张力。</p></article>
+        <article><small>02</small><h3>粘滑事件</h3><p>每圈约 33 次，事件间隔带确定性抖动。</p></article>
+        <article><small>03</small><h3>薄膜模态</h3><p>1506.37 与 1760.85 Hz 两个有效模态。</p></article>
+        <article><small>04</small><h3>小膜辐射</h3><p>1863.85 Hz 高通抑制低频机械位移。</p></article>
+        <article><small>05</small><h3>竹筒波导</h3><p>传播、反射、损耗、管口辐射与反相耦合。</p></article>
+        <article><small>06</small><h3>旋转包络</h3><p>一次与二次 AM 让一圈声音呼吸一次。</p></article>
+      </div>
+    </div></section>
+
+    <section class="chapter" id="physics"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">01 / MECHANICS</div><div><h2>绳只会拉，不会推。</h2><p class="chapter-intro">竹蝉被视作二维质点，竹棒末端是移动锚点。绳松弛时张力严格为零；距离超过绳长后，弹性和径向阻尼共同产生回复力。</p></div></div>
+      <div class="two-col">
+        <div class="prose">
+          <h3>状态与受力</h3>
+          <p>令锚点为 <i>a</i>，竹蝉位置为 <i>x</i>，相对向量 <i>r = x − a</i>，距离 <i>d = ‖r‖</i>。空气阻力作用于速度，重力向下，绳张力沿相对单位向量反向作用。</p>
+          <div class="equation"><div class="equation-label"><span>单向绳张力</span><span>Eq. 1</span></div><math display="block"><mi>T</mi><mo>=</mo><mrow><mo>{</mo><mtable><mtr><mtd><mi>max</mi><mo>(</mo><mn>0</mn><mo>,</mo><mi>k</mi><mo>(</mo><mi>d</mi><mo>−</mo><mi>L</mi><mo>)</mo><mo>+</mo><msub><mi>c</mi><mi>r</mi></msub><msub><mi>v</mi><mi>r</mi></msub><mo>)</mo></mtd><mtd><mi>d</mi><mo>&gt;</mo><mi>L</mi></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mi>d</mi><mo>≤</mo><mi>L</mi></mtd></mtr></mtable></mrow></math><details class="tex"><summary>查看 TeX</summary><code>T=\begin{cases}\max(0,k(d-L)+c_rv_r),&amp;d&gt;L\\0,&amp;d\le L\end{cases}</code></details></div>
+          <div class="equation"><div class="equation-label"><span>质点方程</span><span>Eq. 2</span></div><math display="block"><mrow><mover><mi>v</mi><mo>˙</mo></mover><mo>=</mo><mi>g</mi><mo>−</mo><msub><mi>c</mi><mi>a</mi></msub><mi>v</mi><mo>−</mo><mfrac><mi>T</mi><mi>m</mi></mfrac><mfrac><mi>r</mi><mrow><mo>‖</mo><mi>r</mi><mo>‖</mo></mrow></mfrac><mo>,</mo><mspace width="1em"/><mover><mi>x</mi><mo>˙</mo></mover><mo>=</mo><mi>v</mi></mrow></math><details class="tex"><summary>查看 TeX</summary><code>\dot{\mathbf v}=\mathbf g-c_a\mathbf v-\frac{T}{m}\frac{\mathbf r}{\lVert\mathbf r\rVert},\qquad \dot{\mathbf x}=\mathbf v</code></details></div>
+          <h3>数值稳定性</h3><p>实现使用 `1/240 s` 固定子步，并把单帧推进限制在 `0.1 s`。页面休眠后恢复时，不会把整段停顿一次性注入弹簧。最大距离安全投影只负责阻止无界能量，不替代正常积分。</p>
+          <div class="callout">互动实验调用与组件相同的 <code>createPhysics()</code> 和 <code>stepPhysics()</code>。拖动画布内的黄色锚点，观察绳松弛、张紧和能量衰减。</div>
+        </div>
+        <div class="lab" id="rope-lab">
+          <div class="lab-head"><strong>ROPE MASS LAB</strong><span>drag the yellow anchor</span></div>
+          <div class="canvas-wrap"><canvas id="rope-canvas" aria-label="绳系质点物理模拟"></canvas><div class="canvas-legend"><span><i></i>张紧绳</span><span>虚线 = 松弛范围</span></div></div>
+          <div class="lab-controls">
+            <div class="control"><label for="rope-length-lab">绳长 L</label><input id="rope-length-lab" type="range" min="70" max="180" value="116" step="1"><output data-out="rope-length">116 px</output></div>
+            <div class="control"><label for="gravity-lab">重力 g</label><input id="gravity-lab" type="range" min="0" max="1400" value="720" step="10"><output data-out="gravity">720</output></div>
+            <div class="control"><label for="drag-lab">空气阻尼 cₐ</label><input id="drag-lab" type="range" min="0" max="4" value="0.72" step="0.04"><output data-out="drag">0.72</output></div>
+            <div class="control"><label for="stiffness-lab">绳刚度 k</label><input id="stiffness-lab" type="range" min="200" max="5000" value="2200" step="50"><output data-out="stiffness">2200</output></div>
+          </div>
+          <div class="lab-actions"><button class="primary" id="rope-kick">给一脚切向力</button><button id="rope-reset">复位</button></div>
+          <div class="readouts"><div class="readout"><small>距离 d</small><output id="rope-distance">0</output></div><div class="readout"><small>张力 T</small><output id="rope-tension">0</output></div><div class="readout"><small>角速度</small><output id="rope-omega">0</output></div><div class="readout"><small>activity</small><output id="rope-activity">0</output></div></div>
+        </div>
+      </div>
+    </div></section>
+
+    <section class="chapter" id="excitation"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">02 / EXCITATION</div><div><h2>每圈三十三次，但从不整齐报数。</h2><p class="chapter-intro">松香接触连续经历粘住、积累、滑开与复位。模型不生成规则脉冲列，而用正值 log-normal renewal interval 保证事件不会倒序，同时保留约 25% 的间隔变异。</p></div></div>
+      <div class="two-col">
+        <div class="prose">
+          <div class="equation"><div class="equation-label"><span>事件率</span><span>Eq. 3</span></div><math display="block"><mrow><msub><mi>f</mi><mi>s</mi></msub><mo>=</mo><msub><mi>N</mi><mi>turn</mi></msub><mfrac><mrow><mo>|</mo><mi>ω</mi><mo>|</mo></mrow><mrow><mn>2</mn><mi>π</mi></mrow></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>N</mi><mi>turn</mi></msub><mo>=</mo><mn>32.9531</mn></mrow></math><details class="tex"><summary>查看 TeX</summary><code>f_s=N_{\mathrm{turn}}\frac{|\omega|}{2\pi},\qquad N_{\mathrm{turn}}=32.9531</code></details></div>
+          <div class="equation"><div class="equation-label"><span>正值更新间隔</span><span>Eq. 4</span></div><math display="block"><mrow><mi>Δ</mi><msub><mi>t</mi><mi>n</mi></msub><mo>=</mo><mfrac><mn>1</mn><msub><mi>f</mi><mi>s</mi></msub></mfrac><mi>exp</mi><mo>(</mo><mi>μ</mi><mo>+</mo><mi>σ</mi><msub><mi>z</mi><mi>n</mi></msub><mo>)</mo><mo>,</mo><mspace width="1em"/><mi>σ</mi><mo>=</mo><msqrt><mrow><mi>ln</mi><mo>(</mo><mn>1</mn><mo>+</mo><msup><mi>CV</mi><mn>2</mn></msup><mo>)</mo></mrow></msqrt></mrow></math><details class="tex"><summary>查看 TeX</summary><code>\Delta t_n=\frac{1}{f_s}\exp(\mu+\sigma z_n),\qquad \sigma=\sqrt{\ln(1+\mathrm{CV}^2)}</code></details></div>
+          <p>拟合状态下转速为 `2.367 r/s`，所以事件率约 `78 Hz`。每个事件不是单采样点击，而是短促的双极脉冲与确定性宽带摩擦底噪，共同激励后面的结构滤波器。</p>
+        </div>
+        <div class="lab">
+          <div class="lab-head"><strong>STICK–SLIP EVENT TRAIN</strong><span>renewal process</span></div>
+          <div class="canvas-wrap"><canvas id="event-canvas" aria-label="不规则粘滑事件序列"></canvas></div>
+          <div class="lab-controls">
+            <div class="control"><label for="turn-rate">转速</label><input id="turn-rate" type="range" min="0.5" max="4" value="2.367" step="0.01"><output data-out="turn-rate">2.367 r/s</output></div>
+            <div class="control"><label for="event-cv">间隔 CV</label><input id="event-cv" type="range" min="0" max="0.6" value="0.25" step="0.01"><output data-out="event-cv">0.25</output></div>
+          </div>
+          <div class="readouts"><div class="readout"><small>事件率</small><output id="event-rate">78.0 Hz</output></div><div class="readout"><small>平均间隔</small><output id="event-gap">12.8 ms</output></div><div class="readout"><small>每圈事件</small><output>32.95</output></div><div class="readout"><small>窗口</small><output>250 ms</output></div></div>
+        </div>
+      </div>
+    </div></section>
+
+    <section class="chapter" id="acoustics"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">03 / ACOUSTICS</div><div><h2>膜先响，竹筒晚到半毫秒。</h2><p class="chapter-intro">频谱形状由两个复数二阶膜面模态主导；小膜声辐射高通压住低频机械位移。另一条弱支路传播至竹筒口，并把有损往返反射的相位信息带回混合器。</p></div></div>
+      <div class="two-col">
+        <div class="prose">
+          <h3>膜面有效模态</h3><p>实时实现把两条单位峰值带通作复数相加，归一化相对增益为 `1.00 : 0.54`；频率与 Q 使用最终拟合参数。</p>
+          <div class="equation"><div class="equation-label"><span>单位峰值二阶带通</span><span>Eq. 5</span></div><math display="block"><mrow><msub><mi>H</mi><mi>BP</mi></msub><mo>(</mo><mi>f</mi><mo>)</mo><mo>=</mo><mfrac><mrow><mi>j</mi><mo>(</mo><mi>f</mi><mo>/</mo><msub><mi>f</mi><mn>0</mn></msub><mo>)</mo><mo>/</mo><mi>Q</mi></mrow><mrow><mn>1</mn><mo>−</mo><msup><mrow><mo>(</mo><mi>f</mi><mo>/</mo><msub><mi>f</mi><mn>0</mn></msub><mo>)</mo></mrow><mn>2</mn></msup><mo>+</mo><mi>j</mi><mo>(</mo><mi>f</mi><mo>/</mo><msub><mi>f</mi><mn>0</mn></msub><mo>)</mo><mo>/</mo><mi>Q</mi></mrow></mfrac></mrow></math><details class="tex"><summary>查看 TeX</summary><code>H_{BP}(f)=\frac{j(f/f_0)/Q}{1-(f/f_0)^2+j(f/f_0)/Q}</code></details></div>
+          <h3>辐射不是位移</h3><p>麦克风观测的是空气压力，不是薄膜位移本身。把机械位移直接当声压，会产生不合理的 300–800 Hz 能量。实现先通过一阶高通：</p>
+          <div class="equation"><div class="equation-label"><span>小膜辐射</span><span>Eq. 6</span></div><math display="block"><mrow><msub><mi>H</mi><mi>rad</mi></msub><mo>(</mo><mi>f</mi><mo>)</mo><mo>=</mo><mfrac><mrow><mi>j</mi><mi>f</mi><mo>/</mo><msub><mi>f</mi><mi>c</mi></msub></mrow><mrow><mn>1</mn><mo>+</mo><mi>j</mi><mi>f</mi><mo>/</mo><msub><mi>f</mi><mi>c</mi></msub></mrow></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>f</mi><mi>c</mi></msub><mo>=</mo><mn>1863.85</mn><mtext> Hz</mtext></mrow></math><details class="tex"><summary>查看 TeX</summary><code>H_{rad}(f)=\frac{jf/f_c}{1+jf/f_c},\qquad f_c=1863.85\,\mathrm{Hz}</code></details></div>
+        </div>
+        <div class="prose">
+          <h3>有损竹筒波导</h3>
+          <div class="equation"><div class="equation-label"><span>传播与往返反馈</span><span>Eq. 7</span></div><math display="block"><mrow><msub><mi>H</mi><mi>tube</mi></msub><mo>(</mo><mi>f</mi><mo>)</mo><mo>=</mo><mfrac><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>R</mi><mo>)</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mi>ω</mi><mi>L</mi><mo>/</mo><mi>c</mi></mrow></msup></mrow><mrow><mn>1</mn><mo>−</mo><mi>R</mi><mi>α</mi><mo>(</mo><mi>f</mi><mo>)</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>ω</mi><mi>L</mi><mo>/</mo><mi>c</mi></mrow></msup></mrow></mfrac></mrow></math><details class="tex"><summary>查看 TeX</summary><code>H_{tube}(f)=\frac{(1-R)e^{-j\omega L/c}}{1-R\alpha(f)e^{-j2\omega L/c}}</code></details></div>
+          <div class="equation"><div class="equation-label"><span>频率相关损耗</span><span>Eq. 8</span></div><math display="block"><mrow><mi>α</mi><mo>(</mo><mi>f</mi><mo>)</mo><mo>=</mo><mi>exp</mi><mrow><mo>[</mo><mo>−</mo><mn>1.50</mn><msup><mrow><mo>(</mo><mfrac><mi>f</mi><mn>4000</mn></mfrac><mo>)</mo></mrow><mn>1.2</mn></msup><mo>]</mo></mrow></mrow></math><details class="tex"><summary>查看 TeX</summary><code>\alpha(f)=\exp\left[-1.50\left(\frac{f}{4000}\right)^{1.2}\right]</code></details></div>
+          <div class="equation"><div class="equation-label"><span>直达 + 管口相干叠加</span><span>Eq. 9</span></div><math display="block"><mrow><msub><mi>H</mi><mi>hollow</mi></msub><mo>=</mo><mn>1</mn><mo>+</mo><mi>κ</mi><msup><mi>e</mi><mrow><mi>j</mi><mi>φ</mi></mrow></msup><msub><mi>H</mi><mi>mouth</mi></msub><msub><mi>H</mi><mi>tube</mi></msub><mo>,</mo><mspace width="1em"/><mi>κ</mi><mo>=</mo><mn>0.45</mn><mo>,</mo><mi>φ</mi><mo>=</mo><mi>π</mi></mrow></math><details class="tex"><summary>查看 TeX</summary><code>H_{hollow}=1+\kappa e^{j\phi}H_{mouth}H_{tube},\quad \kappa=0.45,\ \phi=\pi</code></details></div>
+          <div class="callout">实时 Web Audio 用两个 DelayNode 表示 `L/c` 与 `2L/c`。损耗由三级 `3051.50 Hz` 一阶低通近似，在 4 kHz 精确达到 `exp(−1.50) = −13.03 dB`；这是部署近似，不宣称在所有频率上等于分数次幂损耗。</div>
+        </div>
+      </div>
+      <table aria-label="声学拟合参数"><thead><tr><th>参数</th><th>数值</th><th>进入模型的位置</th><th>来源类型</th></tr></thead><tbody>
+        <tr><td><code>membrane_f1 / q1</code></td><td>1506.37 Hz / 10.49</td><td>膜面模态 1</td><td>频谱曲线拟合</td></tr><tr><td><code>membrane_f2 / q2</code></td><td>1760.85 Hz / 10.62</td><td>膜—空气有效模态 2</td><td>频谱曲线拟合</td></tr><tr><td><code>radiation_fc</code></td><td>1863.85 Hz</td><td>膜面声辐射高通</td><td>频谱曲线拟合</td></tr><tr><td><code>tube_length</code></td><td>108.86 mm</td><td>一程与往返延迟</td><td>hollow-profile 拟合</td></tr><tr><td><code>R / loss / κ</code></td><td>0.40 / 1.50 / 0.45</td><td>反馈、损耗、管口混合</td><td>hollow-profile 约束边界</td></tr><tr><td><code>mouth_fc</code></td><td>429.96 Hz</td><td>管口声辐射高通</td><td>频谱曲线拟合</td></tr>
+      </tbody></table>
+    </div></section>
+
+    <section class="chapter" id="spectrum"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">04 / SPECTRUM</div><div><h2>把每一层关掉，听见它负责什么。</h2><p class="chapter-intro">下图直接计算报告里的复数传递函数。拖动竹筒长度、反射、损耗和耦合；开关辐射与 hollow path，观察低频抑制、峰间干涉和梳状相位着色。</p></div></div>
+      <div class="lab spectrum-lab">
+        <div class="lab-head"><strong>ANALYTIC SPECTRAL ENVELOPE</strong><span>300–7000 Hz · level aligned</span></div>
+        <div class="layer-key"><span style="--key:#f0c75e">完整模型</span><span style="--key:#b9dfc9">仅膜面</span><span style="--key:#e97144">管腔差值</span></div>
+        <div class="canvas-wrap"><canvas id="spectrum-canvas" aria-label="竹知了解析频谱曲线"></canvas></div>
+        <div class="lab-controls">
+          <div class="control"><label for="spec-length">管长 L</label><input id="spec-length" type="range" min="60" max="180" value="108.86" step="0.01"><output data-out="spec-length">108.86 mm</output></div>
+          <div class="control"><label for="spec-reflection">反射 R</label><input id="spec-reflection" type="range" min="0" max="0.8" value="0.4" step="0.01"><output data-out="spec-reflection">0.40</output></div>
+          <div class="control"><label for="spec-loss">损耗</label><input id="spec-loss" type="range" min="0.1" max="3" value="1.5" step="0.01"><output data-out="spec-loss">1.50</output></div>
+          <div class="control"><label for="spec-coupling">耦合 κ</label><input id="spec-coupling" type="range" min="0" max="0.8" value="0.45" step="0.01"><output data-out="spec-coupling">0.45</output></div>
+          <div class="control switch"><label for="spec-radiation">小膜辐射高通</label><input id="spec-radiation" type="checkbox" checked></div>
+          <div class="control switch"><label for="spec-hollow">竹筒 hollow path</label><input id="spec-hollow" type="checkbox" checked></div>
+        </div>
+        <div class="readouts"><div class="readout"><small>一程</small><output id="spec-oneway">0.317 ms</output></div><div class="readout"><small>往返</small><output id="spec-roundtrip">0.635 ms</output></div><div class="readout"><small>500 Hz</small><output id="spec-low">−51 dB</output></div><div class="readout"><small>主峰</small><output id="spec-peak">1506 Hz</output></div></div>
+      </div>
+      <div class="scope-note">图中 dB 已按当前曲线峰值对齐，只展示形状，不代表绝对声压级。幅频曲线能约束频谱，却不能单独唯一确定相位、group delay 或“空心感”；因此 hollow profile 强制保留非零波导，再用延迟反馈承载相位结构。</div>
+    </div></section>
+
+    <section class="chapter" id="modulation"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">05 / ROTATION</div><div><h2>音色成形以后，还要随一圈呼吸一次。</h2><p class="chapter-intro">竹蝉转动时，张力、姿态和声辐射方向共同改变接收响度。模型用一次与二次谐波 AM 表示这个慢包络，不把它混进 78 Hz 的粘滑事件。</p></div></div>
+      <div class="two-col">
+        <div class="prose"><div class="equation"><div class="equation-label"><span>旋转幅度调制</span><span>Eq. 10</span></div><math display="block"><mrow><mi>M</mi><mo>(</mo><mi>θ</mi><mo>)</mo><mo>=</mo><mi>clamp</mi><mo>(</mo><mfrac><mrow><mn>1</mn><mo>+</mo><mn>0.66</mn><mi>cos</mi><mi>θ</mi><mo>+</mo><mn>0.35</mn><mi>cos</mi><mo>(</mo><mn>2</mn><mi>θ</mi><mo>+</mo><mn>0.55</mn><mo>)</mo></mrow><mn>2.01</mn></mfrac><mo>,</mo><mn>0.08</mn><mo>,</mo><mn>1</mn><mo>)</mo></mrow></math><details class="tex"><summary>查看 TeX</summary><code>M(\theta)=\operatorname{clamp}\left(\frac{1+0.66\cos\theta+0.35\cos(2\theta+0.55)}{2.01},0.08,1\right)</code></details></div><p>结果进入稳定范围钳制，再用短时间常数平滑 AudioParam，避免每帧更新产生 zipper noise。拖动相位或点击播放，观察一圈中两个局部隆起如何叠加。</p></div>
+        <div class="lab"><div class="lab-head"><strong>ROTATION ENVELOPE</strong><span>phase → gain</span></div><div class="canvas-wrap"><canvas id="am-canvas" aria-label="旋转幅度调制包络"></canvas></div><div class="lab-controls"><div class="control"><label for="am-phase">当前相位</label><input id="am-phase" type="range" min="0" max="360" value="0" step="1"><output data-out="am-phase">0°</output></div></div><div class="lab-actions"><button class="primary" id="am-play">播放一圈</button></div><div class="readouts"><div class="readout"><small>一次深度</small><output>0.66</output></div><div class="readout"><small>二次深度</small><output>0.35</output></div><div class="readout"><small>拟合转速</small><output>2.367 r/s</output></div><div class="readout"><small>当前包络</small><output id="am-value">0</output></div></div></div>
+      </div>
+    </div></section>
+
+    <section class="chapter" id="limits"><div class="chapter-inner">
+      <div class="chapter-head"><div class="chapter-no">06 / EVIDENCE</div><div><h2>它是可解释的实时近似，不是假装完整世界。</h2><p class="chapter-intro">这个模型的目标是在浏览器预算内重建可控、连续、可替换的竹知了声学行为。报告明确记录哪些结论来自拟合，哪些来自物理约束，哪些仍需要听音或新的时域数据。</p></div></div>
+      <table aria-label="模型证据与限制"><thead><tr><th>层</th><th>当前证据</th><th>可以声称</th><th>不能单独声称</th></tr></thead><tbody>
+        <tr><td>膜面模态</td><td>300–7000 Hz 平滑频谱拟合</td><td>两个有效峰及 Q 与目标曲线一致</td><td>唯一真实材料参数或完整三维振型</td></tr><tr><td>低频辐射</td><td>加权曲线目标与高通模型</td><td>抑制此前 300–800 Hz 过量</td><td>精确膜面积或远场指向性</td></tr><tr><td>竹筒路径</td><td>hollow feasible region + magnitude fit</td><td>保留非零传播、反射和损耗</td><td>仅凭幅频证明唯一相位响应</td></tr><tr><td>实时损耗</td><td>三级一阶滤波近似</td><td>4 kHz 命中 −13.03 dB，反馈稳定</td><td>全频段精确等于分数幂衰减</td></tr><tr><td>听感</td><td>节点、离线 PCM、频谱与稳定性 QA</td><td>技术链路按设计运行</td><td>替代真实设备、人耳与扬声器试听</td></tr>
+      </tbody></table>
+      <div class="callout">下一步最有价值的数据不是继续增加并联滤波器，而是给频谱 RMSE 加一个很小的 phase / group-delay 或 impulse-response hollow score，在近似等价的频谱解中选择更可信的空心响应。</div>
+    </div></section>
+  </main>
+
+  <section class="conclusion"><div class="conclusion-inner"><h2>一脚踢出盛夏，背后有十条方程。</h2><div><p>试玩页负责让竹知了飞起来；这份报告负责把每一牛顿、每一个脉冲和每一毫秒延迟说清楚。默认声音仍然全程程序化生成，不请求录音或远程资源。</p><p><a href="./">返回试玩竹知了 →</a></p></div></div></section>
+  <footer><span>zhuzhiliao · interactive scientific report</span><span>MathML + TeX source · zero runtime dependencies</span></footer>
+  <script type="module" src="/science.ts"></script>
+</body>
+</html>

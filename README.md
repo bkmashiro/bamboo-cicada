@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/zhuzhiliao)](https://www.npmjs.com/package/zhuzhiliao)
 [![license: MIT](https://img.shields.io/badge/license-MIT-2f5847)](LICENSE)
 
-[在线试玩](https://bkmashiro.github.io/bamboo-cicada/) · [npm 包](https://www.npmjs.com/package/zhuzhiliao)
+[在线试玩](https://bkmashiro.github.io/bamboo-cicada/) · [互动科学报告](https://bkmashiro.github.io/bamboo-cicada/science.html) · [npm 包](https://www.npmjs.com/package/zhuzhiliao)
 
 一个可以外挂到任意网页上的悬浮竹知了。默认直接可玩，同时允许替换知了 DOM、杆子 DOM、声音实现、渲染器与物理参数。
 
