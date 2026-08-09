@@ -47,8 +47,6 @@ const audioNode = () => ({
 
 class FakeWebkitAudioContext {
   static constructions = 0;
-  static lifecycle: string[] = [];
-  static resumeThrows = false;
   static filters: ReturnType<typeof audioNode>[] = [];
   static delays: ReturnType<typeof audioNode>[] = [];
   static gains: ReturnType<typeof audioNode>[] = [];
@@ -58,7 +56,7 @@ class FakeWebkitAudioContext {
   currentTime = 0;
   sampleRate = 48_000;
   destination = audioNode();
-  constructor() { FakeWebkitAudioContext.constructions += 1; FakeWebkitAudioContext.lifecycle.push('construct'); }
+  constructor() { FakeWebkitAudioContext.constructions += 1; }
   createOscillator() { return audioNode(); }
   createBufferSource() {
     const source = { ...audioNode(), buffer: null as unknown, loop: false };
@@ -66,28 +64,18 @@ class FakeWebkitAudioContext {
     return source;
   }
   createGain() { const node = audioNode(); FakeWebkitAudioContext.gains.push(node); return node; }
-  createBiquadFilter() { const node = audioNode(); FakeWebkitAudioContext.filters.push(node); FakeWebkitAudioContext.lifecycle.push('filter'); return node; }
+  createBiquadFilter() { const node = audioNode(); FakeWebkitAudioContext.filters.push(node); return node; }
   createDelay() { const node = audioNode(); FakeWebkitAudioContext.delays.push(node); return node; }
   createWaveShaper() { const node = audioNode(); FakeWebkitAudioContext.shapers.push(node); return node; }
-  createBuffer(_channels: number, length: number) { FakeWebkitAudioContext.lifecycle.push('buffer'); return { getChannelData: () => new Float32Array(length) }; }
+  createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
   async decodeAudioData() { return { duration: 1.25 } as AudioBuffer; }
-  resume() {
-    FakeWebkitAudioContext.lifecycle.push('resume');
-    if (FakeWebkitAudioContext.resumeThrows) {
-      FakeWebkitAudioContext.resumeThrows = false;
-      throw new Error('resume rejected synchronously');
-    }
-    this.state = 'running';
-    return Promise.resolve();
-  }
+  async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; }
 }
 
 afterEach(() => {
   delete (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext;
   FakeWebkitAudioContext.constructions = 0;
-  FakeWebkitAudioContext.lifecycle = [];
-  FakeWebkitAudioContext.resumeThrows = false;
   FakeWebkitAudioContext.filters = [];
   FakeWebkitAudioContext.delays = [];
   FakeWebkitAudioContext.gains = [];
@@ -213,34 +201,6 @@ describe('source-filter voice model', () => {
     await voice.unlock();
 
     expect(FakeWebkitAudioContext.constructions).toBe(1);
-    expect(voice.playbackState).toBe('running');
-    voice.destroy();
-  });
-
-  it('requests resume before generating buffers or building filters', async () => {
-    vi.stubGlobal('AudioContext', undefined);
-    (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext = FakeWebkitAudioContext;
-    const voice = new SynthCicadaVoice();
-
-    await voice.unlock();
-
-    const resume = FakeWebkitAudioContext.lifecycle.indexOf('resume');
-    expect(resume).toBeGreaterThanOrEqual(0);
-    expect(resume).toBeLessThan(FakeWebkitAudioContext.lifecycle.indexOf('buffer'));
-    expect(resume).toBeLessThan(FakeWebkitAudioContext.lifecycle.indexOf('filter'));
-    voice.destroy();
-  });
-
-  it('finishes the voice graph when an old WebKit resume call throws synchronously', async () => {
-    vi.stubGlobal('AudioContext', undefined);
-    (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext = FakeWebkitAudioContext;
-    FakeWebkitAudioContext.resumeThrows = true;
-    const voice = new SynthCicadaVoice();
-
-    await expect(voice.unlock()).resolves.toBeUndefined();
-
-    expect(FakeWebkitAudioContext.lifecycle.filter((event) => event === 'resume')).toHaveLength(2);
-    expect(FakeWebkitAudioContext.sources).toHaveLength(2);
     expect(voice.playbackState).toBe('running');
     voice.destroy();
   });
