@@ -190,6 +190,25 @@
     .api p { color: rgba(248,242,226,.7); line-height: 1.78; }
     pre { margin: 0; padding: 28px; overflow-x: auto; border: 1px solid rgba(248,242,226,.22); border-radius: 24px; background: #0a352a; color: #d9ed9d; font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: rgba(0,0,0,.18) 0 18px 50px; }
     footer { display: flex; justify-content: space-between; gap: 20px; padding: 28px 24px; color: rgba(248,242,226,.58); background: #082d24; font-size: 12px; }
+    .sound-unlock {
+      position: fixed;
+      left: 50%;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 2147483001;
+      min-height: 52px;
+      padding: 0 22px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      color: #f8f2e2;
+      background: #0b4b3b;
+      box-shadow: 0 14px 40px rgba(6,38,30,.32);
+      font: 700 15px/1 system-ui, sans-serif;
+      transform: translateX(-50%);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sound-unlock:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+    .sound-unlock[hidden] { display: none; }
 
     @media (max-width: 960px) {
       .hero-inner { grid-template-columns: 1fr; padding-top: 125px; }
@@ -234,6 +253,7 @@
   </style>
 </head>
 <body>
+  <button class="sound-unlock" id="sound-unlock" type="button">点一下打开声音</button>
   <header class="site-header">
     <a class="brand" href="#top"><span class="brand-mark">知了</span>zhuzhiliao</a>
     <nav aria-label="主导航">

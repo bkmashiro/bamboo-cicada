@@ -12,6 +12,7 @@ const toy = mountBambooCicada({ voice: () => voice });
 const autoButton = document.querySelector<HTMLButtonElement>('#auto')!;
 const heroPlay = document.querySelector<HTMLButtonElement>('#hero-play')!;
 const soundButton = document.querySelector<HTMLButtonElement>('#sound')!;
+const soundUnlockPrompt = document.querySelector<HTMLButtonElement>('#sound-unlock')!;
 const resetButton = document.querySelector<HTMLButtonElement>('#reset')!;
 const canvas = document.querySelector<HTMLCanvasElement>('#scope')!;
 const context = canvas.getContext('2d')!;
@@ -239,6 +240,10 @@ function syncSoundButton(): void {
   if (!sound) soundButton.textContent = '声音：关';
   else if (voice.playbackState === 'unsupported') soundButton.textContent = '浏览器无音频';
   else soundButton.textContent = '声音：开';
+
+  const needsUnlock = sound && voice.playbackState !== 'running' && voice.playbackState !== 'unsupported';
+  soundUnlockPrompt.hidden = !needsUnlock;
+  if (needsUnlock) soundUnlockPrompt.textContent = '点一下打开声音';
 }
 
 let soundUnlockInFlight: Promise<boolean> | undefined;
@@ -440,7 +445,8 @@ function removeDefaultSoundUnlock(): void {
 }
 
 function unlockDefaultSound(event: Event): void {
-  if (event.composedPath().includes(soundButton)) return;
+  const path = event.composedPath();
+  if (path.includes(soundButton) || path.includes(soundUnlockPrompt)) return;
   void unlockSound().then((running) => {
     if (running) removeDefaultSoundUnlock();
   });
@@ -448,6 +454,14 @@ function unlockDefaultSound(event: Event): void {
 
 soundUnlockEvents.forEach((type) => {
   document.addEventListener(type, unlockDefaultSound, { capture: true, passive: type === 'touchstart' });
+});
+
+soundUnlockPrompt.addEventListener('click', async () => {
+  sound = true;
+  toy.configure({ sound: true });
+  soundUnlockPrompt.textContent = '正在打开声音…';
+  const running = await unlockSound();
+  if (!running) soundUnlockPrompt.textContent = '再点一下打开声音';
 });
 
 soundButton.addEventListener('click', async () => {
