@@ -85,6 +85,8 @@ export interface CicadaVoice {
 export type CicadaPlaybackState = AudioContextState | 'uninitialized' | 'unsupported';
 
 export interface CicadaAcoustics {
+  /** Final output gain multiplier. */
+  volume: number;
   /** Relative rosin/string friction strength. */
   friction: number;
   /** Relative membrane tension. */
@@ -96,6 +98,7 @@ export interface CicadaAcoustics {
 }
 
 export const defaultCicadaAcoustics: Readonly<CicadaAcoustics> = Object.freeze({
+  volume: 2.5,
   friction: 1,
   membraneTension: 1,
   tubeLength: defaultCicadaFit.hollowTube.lengthMeters * 1000,
@@ -218,6 +221,7 @@ export class SynthCicadaVoice implements CicadaVoice {
 
   configure(options: Partial<CicadaAcoustics>): this {
     this.settings = {
+      volume: clamp(finite(options.volume, this.settings.volume), 0.25, 4),
       friction: clamp(finite(options.friction, this.settings.friction), 0.2, 2.5),
       membraneTension: clamp(finite(options.membraneTension, this.settings.membraneTension), 0.4, 2.2),
       tubeLength: clamp(finite(options.tubeLength, this.settings.tubeLength), 60, 240),
@@ -274,7 +278,11 @@ export class SynthCicadaVoice implements CicadaVoice {
     });
     this.oneWayDelay.delayTime.setTargetAtTime(oneWaySeconds, now, 0.04);
     this.roundTripDelay.delayTime.setTargetAtTime(oneWaySeconds * 2, now, 0.04);
-    this.output.gain.setTargetAtTime(values.gain * clamp(0.72 + this.settings.friction * 0.28, 0.6, 1.35), now, 0.018);
+    this.output.gain.setTargetAtTime(
+      values.gain * this.settings.volume * clamp(0.72 + this.settings.friction * 0.28, 0.6, 1.35),
+      now,
+      0.018,
+    );
 
     this.modeFilters.forEach((filter, index) => {
       const mode = fittedModes[index];

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  defaultCicadaAcoustics,
   defaultCicadaFit,
   generateStickSlipExcitation,
   mapVoiceParameters,
@@ -70,6 +71,14 @@ afterEach(() => {
 });
 
 describe('source-filter voice model', () => {
+  it('ships with a clearly audible 2.5x output gain', () => {
+    const voice = new SynthCicadaVoice();
+    expect(defaultCicadaAcoustics.volume).toBe(2.5);
+    expect(voice.acoustics.volume).toBe(2.5);
+    expect(voice.configure({ volume: 99 }).acoustics.volume).toBe(4);
+    expect(voice.configure({ volume: 0 }).acoustics.volume).toBe(0.25);
+  });
+
   it('uses the fitted rotation, stick-slip, membrane, radiation, and hollow-tube parameters', () => {
     expect(defaultCicadaFit).toMatchObject({
       rotationRate: 2.367,
@@ -197,6 +206,7 @@ describe('source-filter voice model', () => {
       tubeDiameter: 1,
     });
     expect(voice.acoustics).toEqual({
+      volume: 2.5,
       friction: 1,
       membraneTension: 0.4,
       tubeLength: 240,
@@ -205,6 +215,7 @@ describe('source-filter voice model', () => {
 
     voice.configure({ friction: 1.7, membraneTension: 1.4, tubeLength: 160, tubeDiameter: 56 });
     expect(voice.acoustics).toEqual({
+      volume: 2.5,
       friction: 1.7,
       membraneTension: 1.4,
       tubeLength: 160,

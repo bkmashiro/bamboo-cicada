@@ -124,14 +124,14 @@ mountBambooCicada({
 ```text
 stick-slip pulse + friction noise
               ↓
-      membrane modal bank
+  membrane modes + radiation HPF
               ↓
-       bamboo cavity modes
+ direct + lossy bamboo mouth path
               ↓
- rotation AM + radiation filter
+     rotation AM + output rolloff
 ```
 
-`SynthCicadaVoice` 开放 `friction`、`membraneTension`、`tubeLength` 和 `tubeDiameter`，实时调整松香摩擦、膜面张力与竹筒腔体。首次指针或键盘操作会解锁 Web Audio。
+`SynthCicadaVoice` 开放 `volume`（默认 `2.5×`，范围 `0.25–4×`）、`friction`、`membraneTension`、`tubeLength` 和 `tubeDiameter`，实时调整最终响度、松香摩擦、膜面张力与竹筒腔体。首次指针或键盘操作会解锁 Web Audio。
 
 ```ts
 import type { CicadaVoice, MotionState } from 'zhuzhiliao';
