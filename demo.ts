@@ -66,9 +66,27 @@ function syncAutoButtons(): void {
   heroPlay.textContent = auto ? '停止自动甩动' : '开始自动甩动';
 }
 
+function syncSoundButton(): void {
+  const running = sound && voice.playbackState === 'running';
+  soundButton.setAttribute('aria-pressed', String(running));
+  if (!sound) soundButton.textContent = '声音：关';
+  else if (running) soundButton.textContent = '声音：开';
+  else if (voice.playbackState === 'unsupported') soundButton.textContent = '浏览器无音频';
+  else soundButton.textContent = '启用声音';
+}
+
+async function unlockSound(): Promise<void> {
+  if (!sound) return;
+  await voice.unlock();
+  syncSoundButton();
+}
+
 function toggleAuto(): void {
   auto = !auto;
-  if (auto) toy.startAuto(); else toy.stopAuto();
+  if (auto) {
+    toy.startAuto();
+    void unlockSound();
+  } else toy.stopAuto();
   syncAutoButtons();
 }
 
@@ -79,12 +97,11 @@ controls.rope.addEventListener('input', applyRopeControl);
 autoButton.addEventListener('click', toggleAuto);
 heroPlay.addEventListener('click', toggleAuto);
 
-soundButton.addEventListener('click', () => {
-  sound = !sound;
+soundButton.addEventListener('click', async () => {
+  sound = !(sound && voice.playbackState === 'running');
   toy.configure({ sound });
-  if (sound) voice.unlock();
-  soundButton.setAttribute('aria-pressed', String(sound));
-  soundButton.textContent = sound ? '声音开启' : '声音关闭';
+  if (sound) await unlockSound();
+  else syncSoundButton();
 });
 
 resetButton.addEventListener('click', () => {
@@ -100,7 +117,10 @@ resetButton.addEventListener('click', () => {
 toy.addEventListener('pointerdown', () => {
   auto = false;
   syncAutoButtons();
+  void unlockSound();
 });
+
+document.addEventListener('visibilitychange', syncSoundButton);
 
 function resizeScope(): void {
   const rect = canvas.getBoundingClientRect();
@@ -148,6 +168,7 @@ function updateTelemetry(): void {
 applyMaterialControls();
 outputs.rope.value = `${number(controls.rope).toFixed(0)} mm`;
 syncAutoButtons();
+syncSoundButton();
 requestAnimationFrame(updateTelemetry);
 
 (window as Window & { __zhuzhiliao?: unknown }).__zhuzhiliao = { toy, voice };

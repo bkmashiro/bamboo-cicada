@@ -4,7 +4,7 @@ export { BambooCicadaElement };
 export type { BambooCicadaOptions };
 export { DefaultCicadaRenderer } from './renderer';
 export { SynthCicadaVoice, mapVoiceParameters, defaultCicadaAcoustics } from './audio';
-export type { CicadaAcoustics, CicadaVoice, VoiceParameters } from './audio';
+export type { CicadaAcoustics, CicadaPlaybackState, CicadaVoice, VoiceParameters } from './audio';
 export { createPhysics, stepPhysics, defaultPhysicsOptions } from './physics';
 export type { BodyPoint, PhysicsOptions, PhysicsState, Point, RopeState } from './physics';
 export type {

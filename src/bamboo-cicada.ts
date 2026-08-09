@@ -101,8 +101,8 @@ export class BambooCicadaElement extends HTMLElementBase {
 
   setAnchor(x: number, y: number): void {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    this.target.x = Math.max(20, Math.min(this.viewport.width - 20, x));
-    this.target.y = Math.max(20, Math.min(this.viewport.height - 145, y));
+    this.target.x = Math.max(52, Math.min(this.viewport.width - 52, x));
+    this.target.y = Math.max(20, Math.min(this.viewport.height - 160, y));
     this.startLoop();
   }
 
@@ -158,7 +158,18 @@ export class BambooCicadaElement extends HTMLElementBase {
     this.viewport = this.measureViewport();
     const anchor = this.defaultAnchor();
     this.physics = createPhysics(anchor, this.options.physics);
-    this.target = { ...this.physics.anchor };
+    const restY = Math.min(anchor.y + this.physics.rope.length, this.maxBodyY());
+    const restDistance = Math.max(0, restY - anchor.y);
+    this.physics.body.x = anchor.x;
+    this.physics.body.y = restY;
+    this.physics.body.vx = 0;
+    this.physics.body.vy = 0;
+    this.physics.rope.distance = restDistance;
+    this.physics.rope.tension = 0;
+    this.physics.rope.angle = Math.PI / 2;
+    this.physics.rope.angularVelocity = 0;
+    this.physics.activity = 0;
+    this.target = { ...anchor };
     this.render();
   }
 
@@ -329,8 +340,8 @@ export class BambooCicadaElement extends HTMLElementBase {
   private readonly onResize = (): void => {
     this.viewport = this.measureViewport();
     this.setAnchor(this.target.x, this.target.y);
-    this.physics.anchor.x = Math.max(16, Math.min(this.viewport.width - 16, this.physics.anchor.x));
-    this.physics.anchor.y = Math.max(16, Math.min(this.viewport.height - 16, this.physics.anchor.y));
+    this.physics.anchor.x = Math.max(52, Math.min(this.viewport.width - 52, this.physics.anchor.x));
+    this.physics.anchor.y = Math.max(20, Math.min(this.viewport.height - 160, this.physics.anchor.y));
     this.render();
   };
 
@@ -360,11 +371,10 @@ export class BambooCicadaElement extends HTMLElementBase {
     this.physics.anchor.y += (this.target.y - this.physics.anchor.y) * follow;
     stepPhysics(this.physics, elapsed);
     this.constrainBodyToViewport();
+    const settled = this.settleIfReady();
     this.render();
 
-    const bodySpeed = Math.hypot(this.physics.body.vx, this.physics.body.vy);
-    const moving = this.auto || this.pointerId !== null || bodySpeed > 0.8 || this.physics.activity > 0.01;
-    if (moving) this.frame = requestAnimationFrame(this.tick);
+    if (!settled) this.frame = requestAnimationFrame(this.tick);
     else {
       this.frame = 0;
       this.voice?.silence();
@@ -376,13 +386,49 @@ export class BambooCicadaElement extends HTMLElementBase {
     const minX = 52;
     const maxX = Math.max(minX, this.viewport.width - 52);
     const minY = 34;
-    const maxY = Math.max(minY, this.viewport.height - 64);
+    const maxY = this.maxBodyY();
     let collided = false;
     if (body.x < minX) { body.x = minX; body.vx = Math.abs(body.vx) * 0.28; collided = true; }
     if (body.x > maxX) { body.x = maxX; body.vx = -Math.abs(body.vx) * 0.28; collided = true; }
     if (body.y < minY) { body.y = minY; body.vy = Math.abs(body.vy) * 0.28; collided = true; }
     if (body.y > maxY) { body.y = maxY; body.vy = -Math.abs(body.vy) * 0.28; collided = true; }
     if (collided) stepPhysics(this.physics, 0);
+  }
+
+  private settleIfReady(): boolean {
+    if (this.auto || this.pointerId !== null) return false;
+    const bodySpeed = Math.hypot(this.physics.body.vx, this.physics.body.vy);
+    const anchorError = Math.hypot(
+      this.target.x - this.physics.anchor.x,
+      this.target.y - this.physics.anchor.y,
+    );
+    const verticalDelta = this.physics.rope.angle - Math.PI / 2;
+    const verticalError = Math.abs(Math.atan2(Math.sin(verticalDelta), Math.cos(verticalDelta)));
+    const restY = Math.min(this.target.y + this.physics.rope.length, this.maxBodyY());
+    const restDistance = Math.max(0, restY - this.target.y);
+    const distanceError = Math.abs(this.physics.rope.distance - restDistance);
+    const bottomSupported = restDistance < this.physics.rope.length - 0.5
+      && this.physics.body.y >= this.maxBodyY() - 0.5;
+    const geometryReady = bottomSupported || (verticalError <= 0.025 && distanceError <= 0.75);
+    const speedLimit = bottomSupported ? 3 : 2;
+    if (bodySpeed > speedLimit || anchorError > 0.25 || !geometryReady) return false;
+
+    this.physics.anchor.x = this.target.x;
+    this.physics.anchor.y = this.target.y;
+    this.physics.body.x = this.target.x;
+    this.physics.body.y = restY;
+    this.physics.body.vx = 0;
+    this.physics.body.vy = 0;
+    this.physics.rope.distance = restDistance;
+    this.physics.rope.tension = 0;
+    this.physics.rope.angle = Math.PI / 2;
+    this.physics.rope.angularVelocity = 0;
+    this.physics.activity = 0;
+    return true;
+  }
+
+  private maxBodyY(): number {
+    return Math.max(34, this.viewport.height - 64);
   }
 
   private motionState(): MotionState {

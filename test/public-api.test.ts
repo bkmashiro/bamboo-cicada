@@ -149,6 +149,67 @@ describe('floating public API', () => {
     expect(toy.motion.auto).toBe(false);
   });
 
+  it('keeps integrating gravity until the idle rope reaches vertical equilibrium', () => {
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 1;
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      const id = nextFrame++;
+      frames.set(id, callback);
+      return id;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)));
+
+    const toy = mountBambooCicada({ sound: false });
+    toy.setAnchor(120, 140);
+
+    let time = performance.now();
+    for (let step = 0; step < 4000 && frames.size > 0; step += 1) {
+      const [id, callback] = frames.entries().next().value as [number, FrameRequestCallback];
+      frames.delete(id);
+      time += 1000 / 60;
+      callback(time);
+    }
+
+    const motion = toy.motion;
+    expect(frames.size).toBe(0);
+    expect(motion.rope.distance).toBeGreaterThanOrEqual(motion.rope.length);
+    expect(motion.rope.distance - motion.rope.length).toBeLessThan(1);
+    expect(motion.rope.angle).toBeCloseTo(Math.PI / 2, 3);
+    expect(Math.hypot(motion.body.vx, motion.body.vy)).toBe(0);
+  });
+
+  it('settles a long rope vertically against a short viewport boundary', () => {
+    vi.stubGlobal('innerWidth', 320);
+    vi.stubGlobal('innerHeight', 360);
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 1;
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      const id = nextFrame++;
+      frames.set(id, callback);
+      return id;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)));
+
+    const toy = mountBambooCicada({ sound: false, physics: { ropeLength: 220 } });
+    toy.setAnchor(100, 200);
+
+    let time = performance.now();
+    for (let step = 0; step < 4000 && frames.size > 0; step += 1) {
+      const [id, callback] = frames.entries().next().value as [number, FrameRequestCallback];
+      frames.delete(id);
+      time += 1000 / 60;
+      callback(time);
+    }
+
+    const motion = toy.motion;
+    expect(frames.size).toBe(0);
+    expect(motion.rope.angle).toBeCloseTo(Math.PI / 2, 3);
+    expect(motion.body.x).toBe(100);
+    expect(motion.body.y).toBe(296);
+    expect(motion.rope.distance).toBe(96);
+    expect(Math.hypot(motion.body.vx, motion.body.vy)).toBe(0);
+  });
+
   it('supports injected audio and renderer factories with explicit ownership', () => {
     const voice: CicadaVoice = {
       update: vi.fn(),

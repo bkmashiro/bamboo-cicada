@@ -25,6 +25,8 @@ export interface CicadaVoice {
   destroy(): void;
 }
 
+export type CicadaPlaybackState = AudioContextState | 'uninitialized' | 'unsupported';
+
 const TAU = Math.PI * 2;
 const MODES = [
   { frequency: 430, q: 8, gain: 0.78, family: 'membrane' },
@@ -99,6 +101,13 @@ export class SynthCicadaVoice implements CicadaVoice {
     return { ...this.settings };
   }
 
+  get playbackState(): CicadaPlaybackState {
+    if (this.context) return this.context.state;
+    if (typeof window === 'undefined') return 'uninitialized';
+    const audioWindow = window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+    return audioWindow.AudioContext || audioWindow.webkitAudioContext ? 'uninitialized' : 'unsupported';
+  }
+
   configure(options: Partial<CicadaAcoustics>): this {
     this.settings = {
       friction: clamp(finite(options.friction, this.settings.friction), 0.2, 2.5),
@@ -109,12 +118,15 @@ export class SynthCicadaVoice implements CicadaVoice {
     return this;
   }
 
-  unlock(): void {
-    const AudioContextClass = typeof window === 'undefined' ? undefined : window.AudioContext;
+  async unlock(): Promise<void> {
+    const audioWindow = typeof window === 'undefined'
+      ? undefined
+      : window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+    const AudioContextClass = audioWindow?.AudioContext ?? audioWindow?.webkitAudioContext;
     if (!AudioContextClass) return;
     if (!this.context) this.start(AudioContextClass);
-    if (this.context?.state === 'suspended') {
-      void this.context.resume().catch(() => undefined);
+    if (this.context && this.context.state !== 'running' && this.context.state !== 'closed') {
+      await this.context.resume().catch(() => undefined);
     }
   }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mapVoiceParameters, SynthCicadaVoice } from '../src/audio';
 import type { MotionState } from '../src/index';
 
@@ -15,6 +15,39 @@ const motion = (
   activity: 1,
   dragging: false,
   auto: false,
+});
+
+const audioParam = () => ({ value: 0, setTargetAtTime: vi.fn() });
+const audioNode = () => ({
+  frequency: audioParam(),
+  detune: audioParam(),
+  gain: audioParam(),
+  Q: audioParam(),
+  type: '',
+  connect(target: unknown) { return target; },
+  start: vi.fn(),
+  stop: vi.fn(),
+});
+
+class FakeWebkitAudioContext {
+  static constructions = 0;
+  state: AudioContextState = 'suspended';
+  currentTime = 0;
+  sampleRate = 48_000;
+  destination = audioNode();
+  constructor() { FakeWebkitAudioContext.constructions += 1; }
+  createOscillator() { return audioNode(); }
+  createBufferSource() { return { ...audioNode(), buffer: null, loop: false }; }
+  createGain() { return audioNode(); }
+  createBiquadFilter() { return audioNode(); }
+  createBuffer() { return { getChannelData: () => new Float32Array(16) }; }
+  async resume() { this.state = 'running'; }
+  async close() { this.state = 'closed'; }
+}
+
+afterEach(() => {
+  delete (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext;
+  FakeWebkitAudioContext.constructions = 0;
 });
 
 describe('source-filter voice model', () => {
@@ -40,6 +73,19 @@ describe('source-filter voice model', () => {
     const taut = mapVoiceParameters(motion(Math.PI * 6, 0, 1, 1.05));
 
     expect(taut.resonanceScale).toBeGreaterThan(loose.resonanceScale);
+  });
+
+  it('unlocks through the iOS webkit AudioContext fallback and exposes playback state', async () => {
+    vi.stubGlobal('AudioContext', undefined);
+    (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext = FakeWebkitAudioContext;
+    const voice = new SynthCicadaVoice();
+
+    expect(voice.playbackState).toBe('uninitialized');
+    await voice.unlock();
+
+    expect(FakeWebkitAudioContext.constructions).toBe(1);
+    expect(voice.playbackState).toBe('running');
+    voice.destroy();
   });
 
   it('clamps interactive acoustic material controls to stable ranges', () => {
