@@ -1,0 +1,38 @@
+{
+  "name": "bamboo-cicada",
+  "version": "0.1.0",
+  "description": "A tiny, embeddable bamboo cicada toy for any web page.",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/bamboo-cicada.umd.cjs",
+  "module": "./dist/bamboo-cicada.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/bamboo-cicada.js",
+      "require": "./dist/bamboo-cicada.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc -p tsconfig.lib.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pack:check": "pnpm pack --pack-destination .artifacts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  }
+}
